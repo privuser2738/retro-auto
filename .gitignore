@@ -1,4 +1,8 @@
 .claude/
 bin/
+obj/
 output/
 dist/
+*.user
+*.suo
+.vs/

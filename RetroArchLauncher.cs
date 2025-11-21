@@ -45,7 +45,8 @@ namespace RetroAuto
                 Console.WriteLine($"Launching: {Path.GetFileName(romPath)}");
                 Console.WriteLine($"Play duration: {playSeconds} seconds");
 
-                // Load saved window position
+                // Load saved window position (Windows only)
+#if !CROSS_PLATFORM
                 WindowManager.WindowPosition? savedPosition = null;
                 if (enableWindowMemory)
                 {
@@ -56,6 +57,7 @@ namespace RetroAuto
                                         (savedPosition.IsMaximized ? " [Maximized]" : ""));
                     }
                 }
+#endif
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -79,7 +81,8 @@ namespace RetroAuto
 
                 Console.WriteLine($"RetroArch launched (PID: {currentProcess.Id})");
 
-                // Wait for window to appear and apply saved position
+                // Wait for window to appear and apply saved position (Windows only)
+#if !CROSS_PLATFORM
                 if (enableWindowMemory && savedPosition != null)
                 {
                     Console.WriteLine("Waiting for RetroArch window...");
@@ -102,6 +105,7 @@ namespace RetroAuto
                         Console.WriteLine("Warning: Could not find RetroArch window");
                     }
                 }
+#endif
 
                 // Wait for the specified duration or cancellation
                 var delayTask = Task.Delay(playSeconds * 1000, cancellationToken);
@@ -109,7 +113,8 @@ namespace RetroAuto
 
                 await Task.WhenAny(delayTask, exitTask);
 
-                // Save window position before closing
+                // Save window position before closing (Windows only)
+#if !CROSS_PLATFORM
                 if (enableWindowMemory && !currentProcess.HasExited)
                 {
                     try
@@ -130,6 +135,7 @@ namespace RetroAuto
                         Console.WriteLine($"Warning: Could not save window position: {ex.Message}");
                     }
                 }
+#endif
 
                 // Close RetroArch if still running
                 if (!currentProcess.HasExited)

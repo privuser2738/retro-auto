@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -12,9 +13,32 @@ namespace RetroAuto
         private const string DEFAULT_RETROARCH = @"C:\RetroArch-Win64\retroarch.exe";
         private const string CORE_NAME = "stella2014";
 
+        // Game Boy / Mesen settings
+        private const string DEFAULT_GAMEBOY_DIR = @"C:\Users\rob\Games\Gameboy";
+        private const string DEFAULT_MESEN = @"C:\Users\rob\Games\Mesen\Mesen.exe";
+
+        // N64 / Project64 settings
+        private const string DEFAULT_N64_DIR = @"C:\Users\rob\Games\N64";
+        private const string DEFAULT_PROJECT64 = @"C:\Users\rob\Games\N64\Project64\Project64.exe";
+
         [STAThread]
         static async Task<int> Main(string[] args)
         {
+            // Check for Game Boy mode
+            if (args.Any(a => a.Equals("gameboy", StringComparison.OrdinalIgnoreCase) ||
+                             a.Equals("--gameboy", StringComparison.OrdinalIgnoreCase) ||
+                             a.Equals("gb", StringComparison.OrdinalIgnoreCase)))
+            {
+                return await RunGameBoyMode(args);
+            }
+
+            // Check for N64 mode
+            if (args.Any(a => a.Equals("n64", StringComparison.OrdinalIgnoreCase) ||
+                             a.Equals("--n64", StringComparison.OrdinalIgnoreCase)))
+            {
+                return await RunN64Mode(args);
+            }
+
             Console.WriteLine("=== RetroAuto - RetroArch Playlist Automation ===\n");
 
             try
@@ -170,7 +194,11 @@ namespace RetroAuto
                     Console.WriteLine($"\n[{gameNumber}/{totalGames}] Preparing: {Path.GetFileName(gamePath)}");
 
                     // Show popup briefly
+#if CROSS_PLATFORM
+                    await TitlePopupConsole.ShowBrieflyAsync(gamePath, gameNumber, totalGames);
+#else
                     await TitlePopup.ShowBrieflyAsync(gamePath, gameNumber, totalGames);
+#endif
 
                     // Random play duration between min-max seconds
                     int playSeconds = random.Next(minSeconds, maxSeconds + 1);
@@ -275,7 +303,103 @@ Settings:
   RetroArch: C:\RetroArch-Win64\retroarch.exe
   Core: stella2014
   Play Time: 20-60 seconds (random per game)
+
+=== GAME BOY MODE ===
+  RetroAuto.exe gameboy              # Interactive Game Boy player with Mesen
+  RetroAuto.exe gb                   # Same as above (short form)
+
+=== N64 MODE ===
+  RetroAuto.exe n64                  # Interactive N64 player with Project64
 ");
+        }
+
+        static async Task<int> RunGameBoyMode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - Game Boy Mode (Mesen) ===\n");
+
+            try
+            {
+                // Parse optional ROM directory argument
+                string romDir = DEFAULT_GAMEBOY_DIR;
+                string mesenPath = DEFAULT_MESEN;
+
+                for (int i = 0; i < args.Length; i++)
+                {
+                    var arg = args[i].ToLower();
+
+                    if (arg == "--mesen" && i + 1 < args.Length)
+                    {
+                        mesenPath = args[++i];
+                    }
+                    else if (!arg.StartsWith("-") &&
+                             !arg.Equals("gameboy", StringComparison.OrdinalIgnoreCase) &&
+                             !arg.Equals("gb", StringComparison.OrdinalIgnoreCase))
+                    {
+                        romDir = args[i];
+                    }
+                }
+
+                using var player = new GameBoyPlayer(mesenPath, romDir);
+                await player.RunInteractive();
+
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunN64Mode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - N64 Mode (Project64) ===\n");
+
+            try
+            {
+                // Parse optional ROM directory argument
+                string romDir = DEFAULT_N64_DIR;
+                string emulatorPath = DEFAULT_PROJECT64;
+
+                for (int i = 0; i < args.Length; i++)
+                {
+                    var arg = args[i].ToLower();
+
+                    if (arg == "--emu" && i + 1 < args.Length)
+                    {
+                        emulatorPath = args[++i];
+                    }
+                    else if (!arg.StartsWith("-") &&
+                             !arg.Equals("n64", StringComparison.OrdinalIgnoreCase))
+                    {
+                        romDir = args[i];
+                    }
+                }
+
+                using var player = new N64Player(emulatorPath, romDir);
+                await player.RunInteractive();
+
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
         }
     }
 }

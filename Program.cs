@@ -3,7 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+#if !CROSS_PLATFORM
 using System.Windows.Forms;
+#endif
 
 namespace RetroAuto
 {

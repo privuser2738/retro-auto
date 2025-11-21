@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <!-- Exclude Windows-specific files for cross-platform builds -->
-  <ItemGroup Condition="'$(CROSS_PLATFORM)' == 'true'">
+  <ItemGroup>
     <Compile Remove="TitlePopup.cs" />
     <Compile Remove="WindowManager.cs" />
   </ItemGroup>

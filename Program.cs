@@ -22,6 +22,8 @@ namespace RetroAuto
                 // Parse command line arguments
                 string command = "continue";  // Default behavior
                 string romDir = DEFAULT_ROM_DIR;
+                int minSeconds = 20;  // Default minimum play time
+                int maxSeconds = 60;  // Default maximum play time
 
                 for (int i = 0; i < args.Length; i++)
                 {
@@ -48,6 +50,23 @@ namespace RetroAuto
                         ShowUsage();
                         return 0;
                     }
+                    else if (arg == "--min-max" && i + 1 < args.Length)
+                    {
+                        // Parse min,max format (e.g., "20,60" or "10,30")
+                        var parts = args[++i].Split(',');
+                        if (parts.Length == 2 &&
+                            int.TryParse(parts[0], out int min) &&
+                            int.TryParse(parts[1], out int max))
+                        {
+                            minSeconds = Math.Max(1, min);  // Minimum 1 second
+                            maxSeconds = Math.Max(minSeconds + 1, max);  // Max must be > min
+                            Console.WriteLine($"Play duration set to {minSeconds}-{maxSeconds} seconds");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Warning: Invalid --min-max format. Use: --min-max 20,60");
+                        }
+                    }
                     else if (!arg.StartsWith("-"))
                     {
                         // Treat as ROM directory
@@ -68,20 +87,20 @@ namespace RetroAuto
                 switch (command)
                 {
                     case "continue":
-                        await PlayGames(playlist, false);
+                        await PlayGames(playlist, minSeconds, maxSeconds);
                         break;
 
                     case "reset":
                         playlist.ResetPlaylist();
                         Console.WriteLine("Playlist has been reset and randomized!");
                         Console.WriteLine("Starting playback with new random order...\n");
-                        await PlayGames(playlist, false);
+                        await PlayGames(playlist, minSeconds, maxSeconds);
                         break;
 
                     case "restart":
                         playlist.RestartPlaylist();
                         Console.WriteLine("Restarting playlist from beginning (same order)...\n");
-                        await PlayGames(playlist, false);
+                        await PlayGames(playlist, minSeconds, maxSeconds);
                         break;
 
                     case "status":
@@ -105,7 +124,7 @@ namespace RetroAuto
             }
         }
 
-        static async Task PlayGames(GamePlaylist playlist, bool unused = false)
+        static async Task PlayGames(GamePlaylist playlist, int minSeconds = 20, int maxSeconds = 60)
         {
             playlist.Initialize();
 
@@ -153,8 +172,8 @@ namespace RetroAuto
                     // Show popup briefly
                     await TitlePopup.ShowBrieflyAsync(gamePath, gameNumber, totalGames);
 
-                    // Random play duration between 20-60 seconds
-                    int playSeconds = random.Next(20, 61);
+                    // Random play duration between min-max seconds
+                    int playSeconds = random.Next(minSeconds, maxSeconds + 1);
 
                     // Launch and play the game
                     bool success = await launcher.LaunchGameAsync(gamePath, playSeconds, cts.Token);
@@ -229,6 +248,9 @@ Commands:
   status, --status      Show playlist status and progress
   help, --help, -h      Show this help message
 
+Options:
+  --min-max X,Y        Set random play duration range in seconds (default: 20,60)
+
 Arguments:
   rom_directory        Path to ROM directory (default: C:\Users\rob\Games\ATARI2600)
 
@@ -238,6 +260,8 @@ Examples:
   RetroAuto.exe --restart                    # Start over from beginning
   RetroAuto.exe --reset                      # Re-randomize and play
   RetroAuto.exe --status                     # Check progress
+  RetroAuto.exe --min-max 10,30              # Play each game 10-30 seconds
+  RetroAuto.exe --min-max 5,15 --restart     # Quick preview mode
   RetroAuto.exe play ""C:\Games\NES""          # Use custom ROM directory
   RetroAuto.exe --restart ""C:\Games\NES""     # Restart custom directory
 

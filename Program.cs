@@ -54,6 +54,9 @@ namespace RetroAuto
                 case "xbox360":
                 case "x360":
                     return await RunXbox360Mode(args);
+                case "stream-psx":
+                case "streampsx":
+                    return await RunStreamingPSXMode(args);
             }
 
             // Also check with -- prefix
@@ -316,6 +319,9 @@ Usage: RetroAuto.exe [system/command] [options]
   ps2                  PlayStation 2 (PCSX2)
   ps3                  PlayStation 3 (RPCS3)
   xbox360, x360        Xbox 360 (Xenia)
+
+=== STREAMING MODES ===
+  stream-psx           Stream PSX games from archive.org (auto-download & play)
 
 === ATARI 2600 MODE (Auto-play) ===
 Commands:
@@ -600,6 +606,26 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
                 Console.WriteLine($"\nSetup Error: {ex.Message}");
                 Console.WriteLine("\nPlease check your paths and try again.");
                 return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunStreamingPSXMode(string[] args)
+        {
+            try
+            {
+                // Optional: specify archive URL as argument
+                // e.g. stream-psx https://archive.org/download/some-other-archive
+                string? archiveUrl = args.Length > 1 ? args[1] : null;
+
+                using var player = new StreamingPSXPlayer(archiveUrl);
+                await player.RunAsync();
+                return 0;
             }
             catch (Exception ex)
             {

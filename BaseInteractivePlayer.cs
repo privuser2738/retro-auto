@@ -355,7 +355,7 @@ namespace RetroAuto
         /// <summary>
         /// Safely launches a game with proper error handling
         /// </summary>
-        protected async Task<bool> SafeLaunchGame(string romPath)
+        protected virtual async Task<bool> SafeLaunchGame(string romPath)
         {
             if (!File.Exists(romPath))
             {

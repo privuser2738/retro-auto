@@ -16,10 +16,17 @@ namespace RetroAuto
         public string RomPath { get; set; } = string.Empty;
         public string SystemName { get; set; } = string.Empty;
         public string EmulatorPath { get; set; } = string.Empty;
+        public string RomDirectory { get; set; } = string.Empty;
         public ConsoleColor ThemeColor { get; set; } = ConsoleColor.White;
 
         public string DisplayName => Path.GetFileNameWithoutExtension(RomPath);
         public string FileName => Path.GetFileName(RomPath);
+
+        /// <summary>
+        /// Path to window config file for this system's emulator
+        /// </summary>
+        public string WindowConfigPath => Path.Combine(RomDirectory,
+            $"{Path.GetFileNameWithoutExtension(EmulatorPath).ToLower()}_window.json");
     }
 
     /// <summary>
@@ -42,14 +49,6 @@ namespace RetroAuto
     {
         private static readonly List<SystemConfig> ALL_SYSTEMS = new()
         {
-            new SystemConfig
-            {
-                Name = "Atari 2600",
-                EmulatorPath = @"C:\RetroArch-Win64\retroarch.exe",
-                RomDirectory = @"C:\Users\rob\Games\ATARI2600",
-                Extensions = new[] { "*.bin", "*.a26" },
-                Color = ConsoleColor.DarkYellow
-            },
             new SystemConfig
             {
                 Name = "Game Boy",
@@ -180,6 +179,7 @@ namespace RetroAuto
                             RomPath = file,
                             SystemName = system.Name,
                             EmulatorPath = system.EmulatorPath,
+                            RomDirectory = system.RomDirectory,
                             ThemeColor = system.Color
                         });
                     }
@@ -206,6 +206,7 @@ namespace RetroAuto
                                     RomPath = eboot,
                                     SystemName = system.Name,
                                     EmulatorPath = system.EmulatorPath,
+                                    RomDirectory = system.RomDirectory,
                                     ThemeColor = system.Color
                                 });
                                 break;
@@ -454,6 +455,21 @@ namespace RetroAuto
                     ? $"-L stella2014_libretro.dll \"{game.RomPath}\""
                     : $"\"{game.RomPath}\"";
 
+#if !CROSS_PLATFORM
+                // Load saved window position for this emulator
+                WindowManager.WindowPosition? savedPosition = null;
+                try
+                {
+                    savedPosition = WindowManager.LoadWindowPosition(game.WindowConfigPath);
+                    if (savedPosition != null)
+                    {
+                        Console.WriteLine($"Window preferences: {savedPosition.Width}x{savedPosition.Height}" +
+                                        (savedPosition.IsMaximized ? " [Maximized]" : ""));
+                    }
+                }
+                catch { /* Ignore errors loading window config */ }
+#endif
+
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = game.EmulatorPath,
@@ -478,6 +494,22 @@ namespace RetroAuto
                 }
 
                 Console.WriteLine($"Emulator launched (PID: {currentProcess.Id})");
+
+#if !CROSS_PLATFORM
+                // Apply saved window position
+                if (savedPosition != null)
+                {
+                    var hWnd = await WindowManager.WaitForProcessWindowAsync(currentProcess, 5000);
+                    if (hWnd != IntPtr.Zero)
+                    {
+                        if (WindowManager.SetWindowPosition(hWnd, savedPosition))
+                        {
+                            Console.WriteLine("Window position restored");
+                        }
+                    }
+                }
+#endif
+
                 Console.WriteLine("\nPress any key to close the game and return to menu...");
 
                 while (!Console.KeyAvailable && !currentProcess.HasExited)
@@ -489,6 +521,30 @@ namespace RetroAuto
                 {
                     Console.ReadKey(true);
                 }
+
+#if !CROSS_PLATFORM
+                // Save window position before closing
+                if (!currentProcess.HasExited)
+                {
+                    try
+                    {
+                        currentProcess.Refresh();
+                        if (currentProcess.MainWindowHandle != IntPtr.Zero)
+                        {
+                            var currentPosition = WindowManager.GetWindowPosition(currentProcess.MainWindowHandle);
+                            if (currentPosition != null)
+                            {
+                                WindowManager.SaveWindowPosition(currentPosition, game.WindowConfigPath);
+                                Console.WriteLine("Window position saved");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Warning: Could not save window position: {ex.Message}");
+                    }
+                }
+#endif
 
                 SafeCleanupProcess();
                 return true;

@@ -324,15 +324,28 @@ Usage: RomDownloader.exe <source|command> [options]
 
         public RomDownloaderEngine()
         {
-            var handler = new HttpClientHandler
+            var handler = new SocketsHttpHandler
             {
-                AllowAutoRedirect = true
+                AllowAutoRedirect = true,
+                AutomaticDecompression = System.Net.DecompressionMethods.All,
+                MaxConnectionsPerServer = 4,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                ConnectTimeout = TimeSpan.FromSeconds(30),
+                EnableMultipleHttp2Connections = true
             };
+
             _client = new HttpClient(handler)
             {
-                Timeout = TimeSpan.FromHours(4) // Long timeout for large files
+                Timeout = TimeSpan.FromHours(8) // Long timeout for large files
             };
-            _client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) RomDownloader/1.0");
+
+            // Use a real browser user agent to avoid throttling
+            _client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            _client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
+            _client.DefaultRequestHeaders.AcceptEncoding.ParseAdd("gzip, deflate, br");
+            _client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
+            _client.DefaultRequestHeaders.Connection.Add("keep-alive");
         }
 
         public async Task<List<RemoteFile>> GetFileList(string url, string[]? extensions = null)
@@ -462,18 +475,21 @@ Usage: RomDownloader.exe <source|command> [options]
                 using var stream = await response.Content.ReadAsStreamAsync(ct);
 
                 FileMode mode = isPartialContent ? FileMode.Append : FileMode.Create;
-                using var fileStream = new FileStream(tempPath, mode, FileAccess.Write, FileShare.None, 81920);
+                // Use large buffer (1MB) and async I/O for better throughput
+                const int bufferSize = 1024 * 1024; // 1MB buffer
+                using var fileStream = new FileStream(tempPath, mode, FileAccess.Write, FileShare.None,
+                    bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
 
-                byte[] buffer = new byte[81920];
+                byte[] buffer = new byte[bufferSize];
                 long totalRead = existingSize;
                 int bytesRead;
                 var lastUpdate = DateTime.Now;
                 long lastBytes = existingSize;
                 double speed = 0;
 
-                while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+                while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0)
                 {
-                    await fileStream.WriteAsync(buffer, 0, bytesRead, ct);
+                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
                     totalRead += bytesRead;
 
                     // Update progress every 500ms

@@ -9,7 +9,11 @@
       "Bash(git push:*)",
       "Bash(git config:*)",
       "Bash(git stash:*)",
-      "Bash(dotnet run:*)"
+      "Bash(dotnet run:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 30 ./bin/Debug/net8.0-windows/win-x64/RetroAuto.exe:*)",
+      "Bash(timeout 20 ./bin/Debug/net8.0-windows/win-x64/RetroAuto.exe:*)"
     ],
     "deny": [],
     "ask": []

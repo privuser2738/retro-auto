@@ -26,20 +26,55 @@ namespace RetroAuto
         [STAThread]
         static async Task<int> Main(string[] args)
         {
-            // Check for Game Boy mode
-            if (args.Any(a => a.Equals("gameboy", StringComparison.OrdinalIgnoreCase) ||
-                             a.Equals("--gameboy", StringComparison.OrdinalIgnoreCase) ||
-                             a.Equals("gb", StringComparison.OrdinalIgnoreCase)))
+            // Check for special modes
+            string? mode = args.FirstOrDefault(a => !a.StartsWith("-"))?.ToLower();
+
+            switch (mode)
             {
-                return await RunGameBoyMode(args);
+                case "all":
+                    return await RunAllSystemsMode(args);
+                case "gameboy":
+                case "gb":
+                    return await RunGameBoyMode(args);
+                case "n64":
+                    return await RunN64Mode(args);
+                case "snes":
+                    return await RunSNESMode(args);
+                case "genesis":
+                case "megadrive":
+                case "md":
+                    return await RunGenesisMode(args);
+                case "ps1":
+                case "psx":
+                    return await RunPS1Mode(args);
+                case "ps2":
+                    return await RunPS2Mode(args);
+                case "ps3":
+                    return await RunPS3Mode(args);
+                case "xbox360":
+                case "x360":
+                    return await RunXbox360Mode(args);
             }
 
-            // Check for N64 mode
-            if (args.Any(a => a.Equals("n64", StringComparison.OrdinalIgnoreCase) ||
-                             a.Equals("--n64", StringComparison.OrdinalIgnoreCase)))
-            {
+            // Also check with -- prefix
+            if (args.Any(a => a.Equals("--all", StringComparison.OrdinalIgnoreCase)))
+                return await RunAllSystemsMode(args);
+            if (args.Any(a => a.Equals("--gameboy", StringComparison.OrdinalIgnoreCase)))
+                return await RunGameBoyMode(args);
+            if (args.Any(a => a.Equals("--n64", StringComparison.OrdinalIgnoreCase)))
                 return await RunN64Mode(args);
-            }
+            if (args.Any(a => a.Equals("--snes", StringComparison.OrdinalIgnoreCase)))
+                return await RunSNESMode(args);
+            if (args.Any(a => a.Equals("--genesis", StringComparison.OrdinalIgnoreCase) || a.Equals("--megadrive", StringComparison.OrdinalIgnoreCase)))
+                return await RunGenesisMode(args);
+            if (args.Any(a => a.Equals("--ps1", StringComparison.OrdinalIgnoreCase) || a.Equals("--psx", StringComparison.OrdinalIgnoreCase)))
+                return await RunPS1Mode(args);
+            if (args.Any(a => a.Equals("--ps2", StringComparison.OrdinalIgnoreCase)))
+                return await RunPS2Mode(args);
+            if (args.Any(a => a.Equals("--ps3", StringComparison.OrdinalIgnoreCase)))
+                return await RunPS3Mode(args);
+            if (args.Any(a => a.Equals("--xbox360", StringComparison.OrdinalIgnoreCase) || a.Equals("--x360", StringComparison.OrdinalIgnoreCase)))
+                return await RunXbox360Mode(args);
 
             Console.WriteLine("=== RetroAuto - RetroArch Playlist Automation ===\n");
 
@@ -269,49 +304,51 @@ namespace RetroAuto
         static void ShowUsage()
         {
             Console.WriteLine(@"
-Usage: RetroAuto.exe [command] [rom_directory]
+Usage: RetroAuto.exe [system/command] [options]
 
+=== SYSTEM MODES (Interactive) ===
+  all                  Random games from ALL available systems
+  gameboy, gb          Game Boy / GBC / GBA (Mesen)
+  n64                  Nintendo 64 (Project64)
+  snes                 Super Nintendo (BSNES)
+  genesis, md          Sega Genesis / Mega Drive (Ares)
+  ps1, psx             PlayStation 1 (DuckStation)
+  ps2                  PlayStation 2 (PCSX2)
+  ps3                  PlayStation 3 (RPCS3)
+  xbox360, x360        Xbox 360 (Xenia)
+
+=== ATARI 2600 MODE (Auto-play) ===
 Commands:
   continue, --continue  Continue playing from where you left off (default)
-  restart, --restart    Restart playlist from beginning (same order, no re-randomize)
-  reset, --reset        Reset playlist with NEW random order and start playing
+  restart, --restart    Restart playlist from beginning (same order)
+  reset, --reset        Reset playlist with NEW random order
   status, --status      Show playlist status and progress
   help, --help, -h      Show this help message
 
 Options:
   --min-max X,Y        Set random play duration range in seconds (default: 20,60)
 
-Arguments:
-  rom_directory        Path to ROM directory (default: C:\Users\rob\Games\ATARI2600)
+=== EXAMPLES ===
+  RetroAuto.exe all                  # Random game from any system
+  RetroAuto.exe ps1                  # Interactive PS1 player
+  RetroAuto.exe snes                 # Interactive SNES player
+  RetroAuto.exe n64                  # Interactive N64 player
+  RetroAuto.exe                      # Continue Atari 2600 playlist
+  RetroAuto.exe --reset              # Reset Atari playlist
+  RetroAuto.exe --min-max 10,30      # Atari: 10-30 second play time
 
-Examples:
-  RetroAuto.exe                              # Continue from last position
-  RetroAuto.exe --continue                   # Same as above
-  RetroAuto.exe --restart                    # Start over from beginning
-  RetroAuto.exe --reset                      # Re-randomize and play
-  RetroAuto.exe --status                     # Check progress
-  RetroAuto.exe --min-max 10,30              # Play each game 10-30 seconds
-  RetroAuto.exe --min-max 5,15 --restart     # Quick preview mode
-  RetroAuto.exe play ""C:\Games\NES""          # Use custom ROM directory
-  RetroAuto.exe --restart ""C:\Games\NES""     # Restart custom directory
+=== CONFIGURED SYSTEMS ===
+  Atari 2600   C:\Users\rob\Games\ATARI2600   (RetroArch + stella2014)
+  Game Boy     C:\Users\rob\Games\GameBoy     (Mesen)
+  N64          C:\Users\rob\Games\N64         (Project64)
+  SNES         C:\Users\rob\Games\SNES        (BSNES)
+  Genesis      C:\Users\rob\Games\Genesis     (Ares)
+  PS1          C:\Users\rob\Games\PS1         (DuckStation)
+  PS2          C:\Users\rob\Games\PS2         (PCSX2)
+  PS3          C:\Users\rob\Games\PS3         (RPCS3)
+  Xbox 360     C:\Users\rob\Games\Xbox360     (Xenia)
 
-Files created in ROM directory:
-  games.txt          - Full randomized playlist
-  games_progress.txt - Remaining games to play
-
-Press Ctrl+C during playback to stop and save progress.
-
-Settings:
-  RetroArch: C:\RetroArch-Win64\retroarch.exe
-  Core: stella2014
-  Play Time: 20-60 seconds (random per game)
-
-=== GAME BOY MODE ===
-  RetroAuto.exe gameboy              # Interactive Game Boy player with Mesen
-  RetroAuto.exe gb                   # Same as above (short form)
-
-=== N64 MODE ===
-  RetroAuto.exe n64                  # Interactive N64 player with Project64
+Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
 ");
         }
 
@@ -388,6 +425,174 @@ Settings:
                 using var player = new N64Player(emulatorPath, romDir);
                 await player.RunInteractive();
 
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunSNESMode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - SNES Mode (BSNES) ===\n");
+
+            try
+            {
+                using var player = new SNESPlayer();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunGenesisMode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - Sega Genesis Mode (Ares) ===\n");
+
+            try
+            {
+                using var player = new GenesisPlayer();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunPS1Mode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - PlayStation 1 Mode (DuckStation) ===\n");
+
+            try
+            {
+                using var player = new PS1Player();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunPS2Mode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - PlayStation 2 Mode (PCSX2) ===\n");
+
+            try
+            {
+                using var player = new PS2Player();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunPS3Mode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - PlayStation 3 Mode (RPCS3) ===\n");
+
+            try
+            {
+                using var player = new PS3Player();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunXbox360Mode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - Xbox 360 Mode (Xenia) ===\n");
+
+            try
+            {
+                using var player = new Xbox360Player();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunAllSystemsMode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - All Systems Mode ===\n");
+
+            try
+            {
+                using var player = new AllSystemsPlayer();
+                await player.RunInteractive();
                 return 0;
             }
             catch (InvalidOperationException ex)

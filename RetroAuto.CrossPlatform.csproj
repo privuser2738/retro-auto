@@ -18,6 +18,9 @@
   <ItemGroup>
     <Compile Remove="TitlePopup.cs" />
     <Compile Remove="WindowManager.cs" />
+    <Compile Remove="RomDownloader\**" />
+    <Content Remove="RomDownloader\**" />
+    <None Remove="RomDownloader\**" />
   </ItemGroup>
 
 </Project>

@@ -19,9 +19,9 @@ namespace RetroAuto
         private const string DEFAULT_GAMEBOY_DIR = @"C:\Users\rob\Games\Gameboy";
         private const string DEFAULT_MESEN = @"C:\Users\rob\Games\Mesen\Mesen.exe";
 
-        // N64 / Project64 settings
+        // N64 / Ares settings
         private const string DEFAULT_N64_DIR = @"C:\Users\rob\Games\N64";
-        private const string DEFAULT_PROJECT64 = @"C:\Users\rob\Games\N64\Project64\Project64.exe";
+        private const string DEFAULT_N64_EMULATOR = @"C:\Users\rob\Games\Ares\ares-v146\ares.exe";
 
         [STAThread]
         static async Task<int> Main(string[] args)
@@ -345,7 +345,7 @@ Usage: RetroAuto.exe [system/command] [options]
 === SYSTEM MODES (Interactive) ===
   all                  Random games from ALL available systems
   gameboy, gb          Game Boy / GBC / GBA (Mesen)
-  n64                  Nintendo 64 (Project64)
+  n64                  Nintendo 64 (Ares)
   snes                 Super Nintendo (BSNES)
   genesis, md          Sega Genesis / Mega Drive (Ares)
   ps1, psx             PlayStation 1 (DuckStation)
@@ -382,7 +382,7 @@ Options:
 === CONFIGURED SYSTEMS ===
   Atari 2600   C:\Users\rob\Games\ATARI2600   (RetroArch + stella2014)
   Game Boy     C:\Users\rob\Games\GameBoy     (Mesen)
-  N64          C:\Users\rob\Games\N64         (Project64)
+  N64          C:\Users\rob\Games\N64         (Ares)
   SNES         C:\Users\rob\Games\SNES        (BSNES)
   Genesis      C:\Users\rob\Games\Genesis     (Ares)
   PS1          C:\Users\rob\Games\PS1         (DuckStation)
@@ -441,13 +441,13 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
 
         static async Task<int> RunN64Mode(string[] args)
         {
-            Console.WriteLine("=== RetroAuto - N64 Mode (Project64) ===\n");
+            Console.WriteLine("=== RetroAuto - N64 Mode (Ares) ===\n");
 
             try
             {
                 // Parse optional ROM directory argument
                 string romDir = DEFAULT_N64_DIR;
-                string emulatorPath = DEFAULT_PROJECT64;
+                string emulatorPath = DEFAULT_N64_EMULATOR;
 
                 for (int i = 0; i < args.Length; i++)
                 {

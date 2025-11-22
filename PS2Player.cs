@@ -7,7 +7,7 @@ namespace RetroAuto
     /// </summary>
     public class PS2Player : BaseInteractivePlayer
     {
-        private const string DEFAULT_EMULATOR_PATH = @"C:\Program Files\PCSX2\pcsx2-qt.exe";
+        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\apps\pcsx2\pcsx2-qt.exe";
         private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\PS2";
         private static readonly string[] ROM_EXTENSIONS = { "*.iso", "*.bin", "*.chd", "*.cso", "*.gz" };
 

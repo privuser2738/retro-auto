@@ -79,7 +79,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "N64",
-                EmulatorPath = @"C:\Users\rob\Games\N64\Project64\Project64.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Ares\ares-v146\ares.exe",
                 RomDirectory = @"C:\Users\rob\Games\N64",
                 Extensions = new[] { "*.n64", "*.z64", "*.v64" },
                 Color = ConsoleColor.Red
@@ -111,7 +111,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "PlayStation 2",
-                EmulatorPath = @"C:\Program Files\PCSX2\pcsx2-qt.exe",
+                EmulatorPath = @"C:\Users\rob\Games\apps\pcsx2\pcsx2-qt.exe",
                 RomDirectory = @"C:\Users\rob\Games\PS2",
                 Extensions = new[] { "*.iso", "*.chd", "*.cso" },
                 Color = ConsoleColor.DarkBlue
@@ -265,7 +265,8 @@ namespace RetroAuto
                 }
                 if (systemName == "N64")
                 {
-                    files = files.Where(f => !f.Contains("Project64", StringComparison.OrdinalIgnoreCase)).ToArray();
+                    // Filter out any emulator files in ROM directory
+                    files = files.Where(f => !f.Contains("ares", StringComparison.OrdinalIgnoreCase)).ToArray();
                 }
 
                 return files;

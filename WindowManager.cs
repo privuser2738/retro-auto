@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -52,10 +53,40 @@ namespace RetroAuto
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+        private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+        }
+
+        private const uint MONITOR_DEFAULTTONEAREST = 2;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
 
         private const uint WM_KEYDOWN = 0x0100;
         private const uint WM_KEYUP = 0x0101;
+        private const uint WM_SYSKEYDOWN = 0x0104;
+        private const uint WM_SYSKEYUP = 0x0105;
         private const int VK_RETURN = 0x0D;
+        private const int VK_F11 = 0x7A;
+        private const int VK_F12 = 0x7B;
+        private const int VK_MENU = 0x12;  // Alt key
 
         [StructLayout(LayoutKind.Sequential)]
         public struct RECT
@@ -361,6 +392,160 @@ namespace RetroAuto
             PostMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_RETURN, IntPtr.Zero);
             Thread.Sleep(50);
             PostMessage(hWnd, WM_KEYUP, (IntPtr)VK_RETURN, IntPtr.Zero);
+        }
+
+        /// <summary>
+        /// Monitor info for display selection
+        /// </summary>
+        public class MonitorInfo
+        {
+            public int Index { get; set; }
+            public IntPtr Handle { get; set; }
+            public int X { get; set; }
+            public int Y { get; set; }
+            public int Width { get; set; }
+            public int Height { get; set; }
+            public bool IsPrimary { get; set; }
+        }
+
+        /// <summary>
+        /// Gets all available monitors
+        /// </summary>
+        public static List<MonitorInfo> GetMonitors()
+        {
+            var monitors = new List<MonitorInfo>();
+            int index = 0;
+
+            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero,
+                (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
+                {
+                    var mi = new MONITORINFO();
+                    mi.cbSize = Marshal.SizeOf(mi);
+
+                    if (GetMonitorInfo(hMonitor, ref mi))
+                    {
+                        monitors.Add(new MonitorInfo
+                        {
+                            Index = index++,
+                            Handle = hMonitor,
+                            X = mi.rcMonitor.Left,
+                            Y = mi.rcMonitor.Top,
+                            Width = mi.rcMonitor.Width,
+                            Height = mi.rcMonitor.Height,
+                            IsPrimary = (mi.dwFlags & 1) != 0  // MONITORINFOF_PRIMARY
+                        });
+                    }
+                    return true;
+                }, IntPtr.Zero);
+
+            return monitors;
+        }
+
+        /// <summary>
+        /// Moves a window to the specified monitor
+        /// </summary>
+        public static bool MoveToMonitor(IntPtr hWnd, int monitorIndex)
+        {
+            if (hWnd == IntPtr.Zero) return false;
+
+            var monitors = GetMonitors();
+            if (monitorIndex < 0 || monitorIndex >= monitors.Count)
+            {
+                Console.WriteLine($"Monitor {monitorIndex} not found. Available: 0-{monitors.Count - 1}");
+                return false;
+            }
+
+            var monitor = monitors[monitorIndex];
+
+            // Restore window first if maximized
+            ShowWindow(hWnd, SW_RESTORE);
+            Thread.Sleep(100);
+
+            // Get current window size
+            if (!GetWindowRect(hWnd, out RECT currentRect))
+                return false;
+
+            int windowWidth = currentRect.Width;
+            int windowHeight = currentRect.Height;
+
+            // Center window on the target monitor
+            int newX = monitor.X + (monitor.Width - windowWidth) / 2;
+            int newY = monitor.Y + (monitor.Height - windowHeight) / 2;
+
+            return SetWindowPos(hWnd, IntPtr.Zero, newX, newY, windowWidth, windowHeight,
+                SWP_NOZORDER | SWP_SHOWWINDOW);
+        }
+
+        /// <summary>
+        /// Moves window to monitor and optionally maximizes
+        /// </summary>
+        public static bool MoveToMonitorAndMaximize(IntPtr hWnd, int monitorIndex)
+        {
+            if (!MoveToMonitor(hWnd, monitorIndex))
+                return false;
+
+            Thread.Sleep(100);
+            ShowWindow(hWnd, SW_MAXIMIZE);
+            return true;
+        }
+
+        /// <summary>
+        /// Sends fullscreen toggle key (F11) to the window
+        /// </summary>
+        public static void SendFullscreenKey(IntPtr hWnd, FullscreenMethod method = FullscreenMethod.F11)
+        {
+            if (hWnd == IntPtr.Zero) return;
+
+            SetForegroundWindow(hWnd);
+            Thread.Sleep(100);
+
+            switch (method)
+            {
+                case FullscreenMethod.F11:
+                    keybd_event(VK_F11, 0, 0, UIntPtr.Zero);
+                    Thread.Sleep(50);
+                    keybd_event(VK_F11, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                    break;
+
+                case FullscreenMethod.F12:
+                    keybd_event(VK_F12, 0, 0, UIntPtr.Zero);
+                    Thread.Sleep(50);
+                    keybd_event(VK_F12, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                    break;
+
+                case FullscreenMethod.AltEnter:
+                    keybd_event(VK_MENU, 0, 0, UIntPtr.Zero);  // Alt down
+                    Thread.Sleep(20);
+                    keybd_event(VK_RETURN, 0, 0, UIntPtr.Zero);  // Enter down
+                    Thread.Sleep(50);
+                    keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);  // Enter up
+                    Thread.Sleep(20);
+                    keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);  // Alt up
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Fullscreen toggle methods for different emulators
+        /// </summary>
+        public enum FullscreenMethod
+        {
+            F11,        // Ares, DuckStation, most emulators
+            F12,        // Some emulators
+            AltEnter    // Project64, PCSX2, many Windows apps
+        }
+
+        /// <summary>
+        /// Print available monitors
+        /// </summary>
+        public static void PrintMonitors()
+        {
+            var monitors = GetMonitors();
+            Console.WriteLine($"Available monitors ({monitors.Count}):");
+            foreach (var m in monitors)
+            {
+                Console.WriteLine($"  [{m.Index}] {m.Width}x{m.Height} at ({m.X},{m.Y}){(m.IsPrimary ? " (Primary)" : "")}");
+            }
         }
     }
 }

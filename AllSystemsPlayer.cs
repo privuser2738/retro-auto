@@ -39,6 +39,7 @@ namespace RetroAuto
         public string RomDirectory { get; set; } = string.Empty;
         public string[] Extensions { get; set; } = Array.Empty<string>();
         public ConsoleColor Color { get; set; } = ConsoleColor.White;
+        public bool RecursiveScan { get; set; } = false;  // Scan subdirectories for ROMs
         public bool IsAvailable => File.Exists(EmulatorPath) && Directory.Exists(RomDirectory);
     }
 
@@ -59,6 +60,24 @@ namespace RetroAuto
             },
             new SystemConfig
             {
+                Name = "NES",
+                EmulatorPath = @"C:\Users\rob\Games\ares\ares-v146\ares.exe",
+                RomDirectory = @"C:\Users\rob\Games\NES",
+                Extensions = new[] { "*.nes", "*.zip" },
+                Color = ConsoleColor.DarkYellow,
+                RecursiveScan = true  // NES ROMs are in subdirectories
+            },
+            new SystemConfig
+            {
+                Name = "Amiga",
+                EmulatorPath = @"C:\Users\rob\AppData\Local\Programs\FS-UAE\Launcher\Windows\x86-64\fs-uae-launcher.exe",
+                RomDirectory = @"C:\Users\rob\Games\Amiga",
+                Extensions = new[] { "*.adf", "*.ipf", "*.dms", "*.adz", "*.zip", "*.lha", "*.hdf" },
+                Color = ConsoleColor.DarkCyan,
+                RecursiveScan = true  // Amiga games may be in subdirectories
+            },
+            new SystemConfig
+            {
                 Name = "N64",
                 EmulatorPath = @"C:\Users\rob\Games\N64\Project64\Project64.exe",
                 RomDirectory = @"C:\Users\rob\Games\N64",
@@ -68,9 +87,9 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "SNES",
-                EmulatorPath = @"C:\Users\rob\Games\SNES\BSNES\bsnes.exe",
+                EmulatorPath = @"C:\Users\rob\Games\ares\ares-v146\ares.exe",
                 RomDirectory = @"C:\Users\rob\Games\SNES",
-                Extensions = new[] { "*.sfc", "*.smc" },
+                Extensions = new[] { "*.sfc", "*.smc", "*.zip" },
                 Color = ConsoleColor.Magenta
             },
             new SystemConfig
@@ -230,9 +249,19 @@ namespace RetroAuto
                 var files = Directory.GetFiles(directory, pattern, SearchOption.AllDirectories);
 
                 // Exclude emulator folders
+                if (systemName == "NES")
+                {
+                    files = files.Where(f => !f.Contains("ares", StringComparison.OrdinalIgnoreCase)).ToArray();
+                }
+                if (systemName == "Amiga")
+                {
+                    files = files.Where(f => !f.Contains("FS-UAE", StringComparison.OrdinalIgnoreCase)
+                                          && !f.Contains("Kickstart", StringComparison.OrdinalIgnoreCase)).ToArray();
+                }
                 if (systemName == "SNES")
                 {
-                    files = files.Where(f => !f.Contains("BSNES", StringComparison.OrdinalIgnoreCase)).ToArray();
+                    files = files.Where(f => !f.Contains("BSNES", StringComparison.OrdinalIgnoreCase)
+                                          && !f.Contains("ares", StringComparison.OrdinalIgnoreCase)).ToArray();
                 }
                 if (systemName == "N64")
                 {
@@ -496,11 +525,20 @@ namespace RetroAuto
                 Console.WriteLine($"Emulator launched (PID: {currentProcess.Id})");
 
 #if !CROSS_PLATFORM
-                // Apply saved window position
-                if (savedPosition != null)
+                // Wait for window
+                var hWnd = await WindowManager.WaitForProcessWindowAsync(currentProcess, 5000);
+                if (hWnd != IntPtr.Zero)
                 {
-                    var hWnd = await WindowManager.WaitForProcessWindowAsync(currentProcess, 5000);
-                    if (hWnd != IntPtr.Zero)
+                    // Check if display options override saved position
+                    var displayOpts = DisplayOptions.Current;
+                    if (displayOpts.Monitor.HasValue || displayOpts.Maximized || displayOpts.Fullscreen)
+                    {
+                        // Determine fullscreen method based on emulator
+                        var fsMethod = GetFullscreenMethodForEmulator(game.EmulatorPath);
+                        displayOpts.ApplyToWindow(hWnd, fsMethod);
+                        Console.WriteLine($"Applied display options: {displayOpts}");
+                    }
+                    else if (savedPosition != null)
                     {
                         if (WindowManager.SetWindowPosition(hWnd, savedPosition))
                         {
@@ -590,6 +628,25 @@ namespace RetroAuto
                     currentProcess = null;
                 }
             }
+        }
+
+        /// <summary>
+        /// Determines the fullscreen toggle method based on emulator
+        /// </summary>
+        private static WindowManager.FullscreenMethod GetFullscreenMethodForEmulator(string emulatorPath)
+        {
+            var name = Path.GetFileNameWithoutExtension(emulatorPath).ToLower();
+
+            // Project64, PCSX2 use Alt+Enter
+            if (name.Contains("project64") || name.Contains("pcsx2"))
+                return WindowManager.FullscreenMethod.AltEnter;
+
+            // FS-UAE uses F12 for fullscreen
+            if (name.Contains("fs-uae"))
+                return WindowManager.FullscreenMethod.F12;
+
+            // Most emulators (Ares, DuckStation, Mesen, etc.) use F11
+            return WindowManager.FullscreenMethod.F11;
         }
 
         public void Dispose()

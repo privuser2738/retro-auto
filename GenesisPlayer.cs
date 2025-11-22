@@ -87,13 +87,22 @@ namespace RetroAuto
 
                 Console.WriteLine($"Ares launched (PID: {currentProcess.Id})");
 
-                // Wait for window to appear and apply saved position
-                if (savedPosition != null)
-                {
-                    var hWnd = await WindowManager.WaitForProcessWindowAsync(currentProcess, 5000);
+                // Wait for window to appear
+                var hWnd = await WindowManager.WaitForProcessWindowAsync(currentProcess, 5000);
 
-                    if (hWnd != IntPtr.Zero)
+                if (hWnd != IntPtr.Zero)
+                {
+                    // Check if display options override saved position
+                    var displayOpts = DisplayOptions.Current;
+                    if (displayOpts.Monitor.HasValue || displayOpts.Maximized || displayOpts.Fullscreen)
                     {
+                        // Apply display options (monitor, maximized, fullscreen)
+                        displayOpts.ApplyToWindow(hWnd, WindowManager.FullscreenMethod.F11);
+                        Console.WriteLine($"Applied display options: {displayOpts}");
+                    }
+                    else if (savedPosition != null)
+                    {
+                        // Use saved window position
                         if (WindowManager.SetWindowPosition(hWnd, savedPosition))
                         {
                             Console.WriteLine("Window position restored");

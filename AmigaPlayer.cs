@@ -8,36 +8,36 @@ using System.Threading.Tasks;
 namespace RetroAuto
 {
     /// <summary>
-    /// Super Nintendo player using Ares emulator
+    /// Commodore Amiga player using FS-UAE emulator
     /// With window memory support (position, size, maximized state)
     /// </summary>
-    public class SNESPlayer : BaseInteractivePlayer
+    public class AmigaPlayer : BaseInteractivePlayer
     {
-        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\ares\ares-v146\ares.exe";
-        private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\SNES";
-        private static readonly string[] ROM_EXTENSIONS = { "*.sfc", "*.smc", "*.zip", "*.fig", "*.swc", "*.bs", "*.st" };
+        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\AppData\Local\Programs\FS-UAE\Launcher\Windows\x86-64\fs-uae-launcher.exe";
+        private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\Amiga";
+        private static readonly string[] ROM_EXTENSIONS = { "*.adf", "*.ipf", "*.dms", "*.adz", "*.zip", "*.lha", "*.hdf", "*.iso" };
 
         private readonly string windowConfigPath;
 
-        public SNESPlayer(string? emulatorPath = null, string? romDirectory = null)
+        public AmigaPlayer(string? emulatorPath = null, string? romDirectory = null)
             : base(
                 emulatorPath ?? DEFAULT_EMULATOR_PATH,
                 romDirectory ?? DEFAULT_ROM_DIR,
-                "snes_games.txt",
-                "Super Nintendo",
+                "amiga_games.txt",
+                "Commodore Amiga",
                 ROM_EXTENSIONS,
-                ConsoleColor.Magenta)
+                ConsoleColor.DarkCyan)
         {
             // Store window config in ROM directory
-            windowConfigPath = Path.Combine(romDirectory ?? DEFAULT_ROM_DIR, "ares_window.json");
+            windowConfigPath = Path.Combine(romDirectory ?? DEFAULT_ROM_DIR, "fsuae_window.json");
         }
 
         /// <summary>
-        /// Override to exclude emulator folders from ROM scanning
+        /// Override to recursively scan subdirectories for ROMs
         /// </summary>
         public override void Initialize()
         {
-            Console.WriteLine($"Scanning for {systemName} ROMs...");
+            Console.WriteLine($"Scanning for {systemName} games (including subdirectories)...");
 
             try
             {
@@ -45,9 +45,10 @@ namespace RetroAuto
 
                 foreach (var ext in romExtensions)
                 {
-                    var files = SafeGetFiles(romDirectory, ext)
-                        .Where(f => !f.Contains("BSNES", StringComparison.OrdinalIgnoreCase))
-                        .Where(f => !f.Contains("ares", StringComparison.OrdinalIgnoreCase));
+                    // Recursively search all subdirectories
+                    var files = SafeGetFilesRecursive(romDirectory, ext)
+                        .Where(f => !f.Contains("FS-UAE", StringComparison.OrdinalIgnoreCase))
+                        .Where(f => !f.Contains("Kickstart", StringComparison.OrdinalIgnoreCase)); // Exclude BIOS files
                     games.AddRange(files);
                 }
 
@@ -70,13 +71,13 @@ namespace RetroAuto
 
         protected override string GetLaunchArguments(string romPath)
         {
-            // Ares accepts ROM path directly
+            // FS-UAE launcher accepts the ROM path directly
             return $"\"{romPath}\"";
         }
 
 #if !CROSS_PLATFORM
         /// <summary>
-        /// Override to add window memory support for Ares
+        /// Override to add window memory support for FS-UAE
         /// </summary>
         protected override async Task<bool> SafeLaunchGame(string romPath)
         {
@@ -115,7 +116,7 @@ namespace RetroAuto
                 }
 
                 // Wait for window to appear
-                var hWnd = await WindowManager.WaitForProcessWindowAsync(currentProcess, 5000);
+                var hWnd = await WindowManager.WaitForProcessWindowAsync(currentProcess, 8000); // FS-UAE may take longer
 
                 if (hWnd != IntPtr.Zero)
                 {
@@ -123,7 +124,8 @@ namespace RetroAuto
                     var displayOpts = DisplayOptions.Current;
                     if (displayOpts.Monitor.HasValue || displayOpts.Maximized || displayOpts.Fullscreen)
                     {
-                        displayOpts.ApplyToWindow(hWnd, WindowManager.FullscreenMethod.F11);
+                        // FS-UAE uses F12 for fullscreen by default
+                        displayOpts.ApplyToWindow(hWnd, WindowManager.FullscreenMethod.F12);
                         Console.WriteLine($"Applied display options: {displayOpts}");
                     }
                     else if (savedPosition != null)

@@ -26,6 +26,21 @@ namespace RetroAuto
         [STAThread]
         static async Task<int> Main(string[] args)
         {
+            // Parse display options (--monitor=X, --maximized, --fullscreen)
+            DisplayOptions.Current = DisplayOptions.Parse(args);
+            if (DisplayOptions.Current.Monitor.HasValue || DisplayOptions.Current.Maximized || DisplayOptions.Current.Fullscreen)
+            {
+                Console.WriteLine($"Display options: {DisplayOptions.Current}");
+            }
+
+            // Check for --monitors flag to list displays
+            if (args.Any(a => a.Equals("--monitors", StringComparison.OrdinalIgnoreCase) ||
+                             a.Equals("--list-monitors", StringComparison.OrdinalIgnoreCase)))
+            {
+                WindowManager.PrintMonitors();
+                if (args.Length == 1) return 0;  // Only listing monitors, exit
+            }
+
             // Check for special modes
             string? mode = args.FirstOrDefault(a => !a.StartsWith("-"))?.ToLower();
 
@@ -38,8 +53,12 @@ namespace RetroAuto
                     return await RunGameBoyMode(args);
                 case "n64":
                     return await RunN64Mode(args);
+                case "nes":
+                    return await RunNESMode(args);
                 case "snes":
                     return await RunSNESMode(args);
+                case "amiga":
+                    return await RunAmigaMode(args);
                 case "genesis":
                 case "megadrive":
                 case "md":
@@ -66,8 +85,12 @@ namespace RetroAuto
                 return await RunGameBoyMode(args);
             if (args.Any(a => a.Equals("--n64", StringComparison.OrdinalIgnoreCase)))
                 return await RunN64Mode(args);
+            if (args.Any(a => a.Equals("--nes", StringComparison.OrdinalIgnoreCase)))
+                return await RunNESMode(args);
             if (args.Any(a => a.Equals("--snes", StringComparison.OrdinalIgnoreCase)))
                 return await RunSNESMode(args);
+            if (args.Any(a => a.Equals("--amiga", StringComparison.OrdinalIgnoreCase)))
+                return await RunAmigaMode(args);
             if (args.Any(a => a.Equals("--genesis", StringComparison.OrdinalIgnoreCase) || a.Equals("--megadrive", StringComparison.OrdinalIgnoreCase)))
                 return await RunGenesisMode(args);
             if (args.Any(a => a.Equals("--ps1", StringComparison.OrdinalIgnoreCase) || a.Equals("--psx", StringComparison.OrdinalIgnoreCase)))
@@ -447,13 +470,61 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
             }
         }
 
+        static async Task<int> RunNESMode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - NES Mode (Ares) ===\n");
+
+            try
+            {
+                using var player = new NESPlayer();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
         static async Task<int> RunSNESMode(string[] args)
         {
-            Console.WriteLine("=== RetroAuto - SNES Mode (BSNES) ===\n");
+            Console.WriteLine("=== RetroAuto - SNES Mode (Ares) ===\n");
 
             try
             {
                 using var player = new SNESPlayer();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunAmigaMode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - Amiga Mode (FS-UAE) ===\n");
+
+            try
+            {
+                using var player = new AmigaPlayer();
                 await player.RunInteractive();
                 return 0;
             }

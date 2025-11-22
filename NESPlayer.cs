@@ -8,36 +8,36 @@ using System.Threading.Tasks;
 namespace RetroAuto
 {
     /// <summary>
-    /// Super Nintendo player using Ares emulator
+    /// Nintendo Entertainment System player using Ares emulator
     /// With window memory support (position, size, maximized state)
     /// </summary>
-    public class SNESPlayer : BaseInteractivePlayer
+    public class NESPlayer : BaseInteractivePlayer
     {
         private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\ares\ares-v146\ares.exe";
-        private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\SNES";
-        private static readonly string[] ROM_EXTENSIONS = { "*.sfc", "*.smc", "*.zip", "*.fig", "*.swc", "*.bs", "*.st" };
+        private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\NES";
+        private static readonly string[] ROM_EXTENSIONS = { "*.nes", "*.zip" };
 
         private readonly string windowConfigPath;
 
-        public SNESPlayer(string? emulatorPath = null, string? romDirectory = null)
+        public NESPlayer(string? emulatorPath = null, string? romDirectory = null)
             : base(
                 emulatorPath ?? DEFAULT_EMULATOR_PATH,
                 romDirectory ?? DEFAULT_ROM_DIR,
-                "snes_games.txt",
-                "Super Nintendo",
+                "nes_games.txt",
+                "Nintendo Entertainment System",
                 ROM_EXTENSIONS,
-                ConsoleColor.Magenta)
+                ConsoleColor.Red)
         {
             // Store window config in ROM directory
             windowConfigPath = Path.Combine(romDirectory ?? DEFAULT_ROM_DIR, "ares_window.json");
         }
 
         /// <summary>
-        /// Override to exclude emulator folders from ROM scanning
+        /// Override to recursively scan subdirectories for ROMs
         /// </summary>
         public override void Initialize()
         {
-            Console.WriteLine($"Scanning for {systemName} ROMs...");
+            Console.WriteLine($"Scanning for {systemName} ROMs (including subdirectories)...");
 
             try
             {
@@ -45,8 +45,8 @@ namespace RetroAuto
 
                 foreach (var ext in romExtensions)
                 {
-                    var files = SafeGetFiles(romDirectory, ext)
-                        .Where(f => !f.Contains("BSNES", StringComparison.OrdinalIgnoreCase))
+                    // Recursively search all subdirectories using base class method
+                    var files = SafeGetFilesRecursive(romDirectory, ext)
                         .Where(f => !f.Contains("ares", StringComparison.OrdinalIgnoreCase));
                     games.AddRange(files);
                 }

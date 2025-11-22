@@ -352,12 +352,14 @@ namespace RetroAuto
                             bool success = await SafeLaunchGame(currentGame);
                             if (success) gamesPlayed++;
 
-                            currentGame = GetRandomGame();
+                            // Use the previewed nextGame to ensure consistency with what was shown
+                            currentGame = GetRandomGame(nextGame);
                             nextGame = PeekNextGame();
                             break;
 
                         case 1: // Skip
-                            currentGame = GetRandomGame();
+                            // Use the previewed nextGame to ensure consistency with what was shown
+                            currentGame = GetRandomGame(nextGame);
                             nextGame = PeekNextGame();
                             break;
 
@@ -437,10 +439,23 @@ namespace RetroAuto
             return value.Length <= maxLength ? value : value.Substring(0, maxLength - 3) + "...";
         }
 
-        private SystemGame? GetRandomGame()
+        /// <summary>
+        /// Gets the next random game from the shuffled queue.
+        /// If specific nextGame is provided, uses that instead (for consistency with previewed "Next" game)
+        /// </summary>
+        private SystemGame? GetRandomGame(SystemGame? useThisGame = null)
         {
             lock (lockObject)
             {
+                // If a specific game was provided (the one we showed as "Next"), use it
+                if (useThisGame != null)
+                {
+                    // Remove it from remainingGames if present
+                    remainingGames.Remove(useThisGame);
+                    return useThisGame;
+                }
+
+                // Otherwise get next from queue
                 if (remainingGames.Count == 0 && allGames.Count > 0)
                 {
                     remainingGames = allGames.OrderBy(x => random.Next()).ToList();
@@ -454,10 +469,14 @@ namespace RetroAuto
             }
         }
 
+        /// <summary>
+        /// Peeks at the next game without removing it from the queue
+        /// </summary>
         private SystemGame? PeekNextGame()
         {
             lock (lockObject)
             {
+                // Reshuffle if needed
                 if (remainingGames.Count == 0 && allGames.Count > 0)
                 {
                     remainingGames = allGames.OrderBy(x => random.Next()).ToList();

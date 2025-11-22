@@ -76,6 +76,16 @@ namespace RetroAuto
                 case "stream-psx":
                 case "streampsx":
                     return await RunStreamingPSXMode(args);
+                case "stream-ps2":
+                case "streamps2":
+                    return await RunStreamingPS2Mode(args);
+                case "stream-xbox":
+                case "streamxbox":
+                    return await RunStreamingXboxMode(args);
+                case "stream-xbox360":
+                case "stream-x360":
+                case "streamxbox360":
+                    return await RunStreamingXbox360Mode(args);
             }
 
             // Also check with -- prefix
@@ -345,6 +355,9 @@ Usage: RetroAuto.exe [system/command] [options]
 
 === STREAMING MODES ===
   stream-psx           Stream PSX games from archive.org (auto-download & play)
+  stream-ps2           Stream PS2 games from archive.org (auto-download & play)
+  stream-xbox          Stream Xbox games from archive.org (Xemu emulator)
+  stream-xbox360       Stream Xbox 360 games from archive.org (Xenia emulator)
 
 === ATARI 2600 MODE (Auto-play) ===
 Commands:
@@ -695,6 +708,64 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
                 string? archiveUrl = args.Length > 1 ? args[1] : null;
 
                 using var player = new StreamingPSXPlayer(archiveUrl);
+                await player.RunAsync();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunStreamingPS2Mode(string[] args)
+        {
+            try
+            {
+                // Optional: specify archive URL as argument
+                // e.g. stream-ps2 https://archive.org/download/some-other-ps2-archive
+                string? archiveUrl = args.Length > 1 ? args[1] : null;
+
+                using var player = new StreamingPS2Player(archiveUrl);
+                await player.RunAsync();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunStreamingXboxMode(string[] args)
+        {
+            try
+            {
+                // Optional: specify archive URL as argument
+                string? archiveUrl = args.Length > 1 ? args[1] : null;
+
+                using var player = new StreamingXboxPlayer(archiveUrl);
+                await player.RunAsync();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunStreamingXbox360Mode(string[] args)
+        {
+            try
+            {
+                // Optional: specify archive URL as argument
+                string? archiveUrl = args.Length > 1 ? args[1] : null;
+
+                using var player = new StreamingXbox360Player(archiveUrl);
                 await player.RunAsync();
                 return 0;
             }

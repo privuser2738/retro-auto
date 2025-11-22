@@ -13,7 +13,11 @@
       "Bash(taskkill:*)",
       "Bash(curl:*)",
       "Bash(timeout 30 ./bin/Debug/net8.0-windows/win-x64/RetroAuto.exe:*)",
-      "Bash(timeout 20 ./bin/Debug/net8.0-windows/win-x64/RetroAuto.exe:*)"
+      "Bash(timeout 20 ./bin/Debug/net8.0-windows/win-x64/RetroAuto.exe:*)",
+      "WebFetch(domain:romspure.cc)",
+      "WebFetch(domain:romsfun.com)",
+      "WebSearch",
+      "WebFetch(domain:archive.org)"
     ],
     "deny": [],
     "ask": []

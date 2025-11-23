@@ -65,6 +65,12 @@ namespace RetroAuto
                     return await RunGenesisMode(args);
                 case "saturn":
                     return await RunSaturnMode(args);
+                case "dreamcast":
+                case "dc":
+                    return await RunDreamcastMode(args);
+                case "amiga-1000":
+                case "amiga1000":
+                    return await RunAmiga1000Mode(args);
                 case "ps1":
                 case "psx":
                     return await RunPS1Mode(args);
@@ -108,6 +114,12 @@ namespace RetroAuto
                 return await RunAmigaMode(args);
             if (args.Any(a => a.Equals("--genesis", StringComparison.OrdinalIgnoreCase) || a.Equals("--megadrive", StringComparison.OrdinalIgnoreCase)))
                 return await RunGenesisMode(args);
+            if (args.Any(a => a.Equals("--saturn", StringComparison.OrdinalIgnoreCase)))
+                return await RunSaturnMode(args);
+            if (args.Any(a => a.Equals("--dreamcast", StringComparison.OrdinalIgnoreCase) || a.Equals("--dc", StringComparison.OrdinalIgnoreCase)))
+                return await RunDreamcastMode(args);
+            if (args.Any(a => a.Equals("--amiga-1000", StringComparison.OrdinalIgnoreCase) || a.Equals("--amiga1000", StringComparison.OrdinalIgnoreCase)))
+                return await RunAmiga1000Mode(args);
             if (args.Any(a => a.Equals("--ps1", StringComparison.OrdinalIgnoreCase) || a.Equals("--psx", StringComparison.OrdinalIgnoreCase)))
                 return await RunPS1Mode(args);
             if (args.Any(a => a.Equals("--ps2", StringComparison.OrdinalIgnoreCase)))
@@ -354,6 +366,8 @@ Usage: RetroAuto.exe [system/command] [options]
   snes                 Super Nintendo (BSNES)
   genesis, md          Sega Genesis / Mega Drive (Ares)
   saturn               Sega Saturn (YabaSanshiro)
+  dreamcast, dc        Sega Dreamcast (Flycast)
+  amiga-1000           Commodore Amiga 1000 (Ares)
   ps1, psx             PlayStation 1 (DuckStation)
   ps2                  PlayStation 2 (PCSX2)
   ps3                  PlayStation 3 (RPCS3)
@@ -368,7 +382,7 @@ Usage: RetroAuto.exe [system/command] [options]
 
   Streaming Options:
     -l, --locale XX    Filter by locale: en (English/USA), jp (Japanese), eu (European), * (all)
-    --reset            Reset playlist with NEW random order
+    --reset, --restart Reset playlist with NEW random order
     --reset-progress   Restart from beginning (keep same order)
 
 === ATARI 2600 MODE (Auto-play) ===
@@ -398,6 +412,8 @@ Options:
   SNES         C:\Users\rob\Games\SNES        (BSNES)
   Genesis      C:\Users\rob\Games\Genesis     (Ares)
   Saturn       C:\Users\rob\Games\Saturn      (YabaSanshiro)
+  Dreamcast    C:\Users\rob\Games\Dreamcast   (Flycast)
+  Amiga 1000   C:\Users\rob\Games\Amiga1000   (Ares)
   PS1          C:\Users\rob\Games\PS1         (DuckStation)
   PS2          C:\Users\rob\Games\PS2         (PCSX2)
   PS3          C:\Users\rob\Games\PS3         (RPCS3)
@@ -714,11 +730,59 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
 
         static async Task<int> RunSaturnMode(string[] args)
         {
-            Console.WriteLine("=== RetroAuto - Sega Saturn Mode (RetroArch + Beetle Saturn) ===\n");
+            Console.WriteLine("=== RetroAuto - Sega Saturn Mode (YabaSanshiro) ===\n");
 
             try
             {
                 using var player = new SaturnPlayer();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunDreamcastMode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - Dreamcast Mode (Flycast) ===\n");
+
+            try
+            {
+                using var player = new DreamcastPlayer();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunAmiga1000Mode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - Amiga 1000 Mode (Ares) ===\n");
+
+            try
+            {
+                using var player = new Amiga1000Player();
                 await player.RunInteractive();
                 return 0;
             }
@@ -861,12 +925,16 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
 
         /// <summary>
         /// Parse reset flags from command line args
-        /// --reset: Full reset with new random order
+        /// --reset / --restart: Full reset with new random order
         /// --reset-progress: Reset progress but keep same order
         /// </summary>
         private static (bool forceReset, bool resetProgressOnly) ParseResetFlags(string[] args)
         {
-            bool forceReset = args.Any(a => a.Equals("--reset", StringComparison.OrdinalIgnoreCase));
+            bool forceReset = args.Any(a =>
+                a.Equals("--reset", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("--restart", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("reset", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("restart", StringComparison.OrdinalIgnoreCase));
             bool resetProgressOnly = args.Any(a => a.Equals("--reset-progress", StringComparison.OrdinalIgnoreCase));
             return (forceReset, resetProgressOnly);
         }

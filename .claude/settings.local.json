@@ -18,7 +18,12 @@
       "WebFetch(domain:romsfun.com)",
       "WebSearch",
       "WebFetch(domain:archive.org)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "WebFetch(domain:forums.launchbox-app.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(\"C:/Users/rob/Games/Apps/YabaSanshiro/yabasanshiro.exe\" --help)",
+      "Bash(\"C:/Users/rob/Games/Apps/YabaSanshiro/yabasanshiro.exe\" -h)",
+      "Bash(\"C:/Users/rob/Games/Apps/YabaSanshiro/yabasanshiro.exe\" -?)"
     ],
     "deny": [],
     "ask": []

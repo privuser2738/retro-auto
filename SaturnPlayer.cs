@@ -32,8 +32,8 @@ namespace RetroAuto
 
         protected override string GetLaunchArguments(string romPath)
         {
-            // YabaSanshiro uses -i for input file
-            return $"-i \"{romPath}\"";
+            // YabaSanshiro: -a for auto-start, --iso for ROM file
+            return $"-a --iso=\"{romPath}\"";
         }
 
 #if !CROSS_PLATFORM

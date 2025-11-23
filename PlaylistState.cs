@@ -60,9 +60,18 @@ namespace RetroAuto
         {
             var currentGamesList = currentGames.ToList();
 
-            if (forceReset || !HasSavedState)
+            if (forceReset)
             {
-                // Full reset - new random order
+                // Full reset - delete old state and create completely new random order
+                DeleteState();
+                CreateNewPlaylist(currentGamesList);
+                Save();
+                return;
+            }
+
+            if (!HasSavedState)
+            {
+                // No saved state - create new random order
                 CreateNewPlaylist(currentGamesList);
                 Save();
                 return;

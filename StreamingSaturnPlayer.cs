@@ -712,11 +712,11 @@ namespace RetroAuto
                 try { savedPosition = WindowManager.LoadWindowPosition(windowConfigPath); } catch { }
 #endif
 
-                // YabaSanshiro uses -i for input file
+                // YabaSanshiro: -a for auto-start, --iso for ROM file
                 var psi = new ProcessStartInfo
                 {
                     FileName = emulatorPath,
-                    Arguments = $"-i \"{game.GameFilePath}\"",
+                    Arguments = $"-a --iso=\"{game.GameFilePath}\"",
                     UseShellExecute = false
                 };
 

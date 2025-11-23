@@ -102,6 +102,30 @@ namespace RetroAuto
             },
             new SystemConfig
             {
+                Name = "Sega Saturn",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\YabaSanshiro\yabasanshiro.exe",
+                RomDirectory = @"C:\Users\rob\Games\Saturn",
+                Extensions = new[] { "*.chd", "*.cue", "*.iso", "*.bin" },
+                Color = ConsoleColor.DarkYellow
+            },
+            new SystemConfig
+            {
+                Name = "Dreamcast",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Flycast\flycast.exe",
+                RomDirectory = @"C:\Users\rob\Games\Dreamcast",
+                Extensions = new[] { "*.chd", "*.cdi", "*.gdi", "*.cue", "*.iso" },
+                Color = ConsoleColor.DarkCyan
+            },
+            new SystemConfig
+            {
+                Name = "Amiga 1000",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Ares\ares.exe",
+                RomDirectory = @"C:\Users\rob\Games\Amiga1000",
+                Extensions = new[] { "*.adf", "*.adz", "*.dms", "*.ipf", "*.zip" },
+                Color = ConsoleColor.Cyan
+            },
+            new SystemConfig
+            {
                 Name = "PlayStation 1",
                 EmulatorPath = @"C:\Users\rob\Games\Apps\Duckstation\duckstation-qt-x64-ReleaseLTCG.exe",
                 RomDirectory = @"C:\Users\rob\Games\PS1",
@@ -500,9 +524,13 @@ namespace RetroAuto
 
             try
             {
-                string arguments = game.SystemName == "Atari 2600"
-                    ? $"-L stella2014_libretro.dll \"{game.RomPath}\""
-                    : $"\"{game.RomPath}\"";
+                string arguments;
+                if (game.SystemName == "Atari 2600")
+                    arguments = $"-L stella2014_libretro.dll \"{game.RomPath}\"";
+                else if (game.SystemName == "Sega Saturn")
+                    arguments = $"-a --iso=\"{game.RomPath}\"";
+                else
+                    arguments = $"\"{game.RomPath}\"";
 
 #if !CROSS_PLATFORM
                 // Load saved window position for this emulator

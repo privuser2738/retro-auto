@@ -6,39 +6,39 @@ using System.Threading.Tasks;
 namespace RetroAuto
 {
     /// <summary>
-    /// Sega Genesis / Mega Drive player using Ares emulator
+    /// Sega Saturn player using YabaSanshiro emulator
     /// With window memory support (position, size, maximized state)
     /// </summary>
-    public class GenesisPlayer : BaseInteractivePlayer
+    public class SaturnPlayer : BaseInteractivePlayer
     {
-        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Apps\Ares\ares.exe";
-        private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\Genesis";
-        private static readonly string[] ROM_EXTENSIONS = { "*.zip", "*.bin", "*.md", "*.gen", "*.smd", "*.32x" };
+        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Apps\YabaSanshiro\yabasanshiro.exe";
+        private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\Saturn";
+        private static readonly string[] ROM_EXTENSIONS = { "*.chd", "*.cue", "*.iso", "*.bin" };
 
         private readonly string windowConfigPath;
 
-        public GenesisPlayer(string? emulatorPath = null, string? romDirectory = null)
+        public SaturnPlayer(string? emulatorPath = null, string? romDirectory = null)
             : base(
                 emulatorPath ?? DEFAULT_EMULATOR_PATH,
                 romDirectory ?? DEFAULT_ROM_DIR,
-                "genesis_games.txt",
-                "Sega Genesis",
+                "saturn_games.txt",
+                "Sega Saturn",
                 ROM_EXTENSIONS,
-                ConsoleColor.DarkRed)
+                ConsoleColor.DarkYellow)
         {
             // Store window config in ROM directory
-            windowConfigPath = Path.Combine(romDirectory ?? DEFAULT_ROM_DIR, "ares_window.json");
+            windowConfigPath = Path.Combine(romDirectory ?? DEFAULT_ROM_DIR, "yabasanshiro_window.json");
         }
 
         protected override string GetLaunchArguments(string romPath)
         {
-            // Ares accepts ROM path directly
-            return $"\"{romPath}\"";
+            // YabaSanshiro uses -i for input file
+            return $"-i \"{romPath}\"";
         }
 
 #if !CROSS_PLATFORM
         /// <summary>
-        /// Override to add window memory support for Ares
+        /// Override to add window memory support for YabaSanshiro
         /// </summary>
         protected override async Task<bool> SafeLaunchGame(string romPath)
         {
@@ -79,13 +79,13 @@ namespace RetroAuto
 
                 if (currentProcess == null)
                 {
-                    Console.WriteLine($"ERROR: Failed to start Ares emulator");
+                    Console.WriteLine($"ERROR: Failed to start YabaSanshiro");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey(true);
                     return false;
                 }
 
-                Console.WriteLine($"Ares launched (PID: {currentProcess.Id})");
+                Console.WriteLine($"YabaSanshiro launched (PID: {currentProcess.Id})");
 
                 // Wait for window to appear
                 var hWnd = await WindowManager.WaitForProcessWindowAsync(currentProcess, 5000);
@@ -97,7 +97,7 @@ namespace RetroAuto
                     if (displayOpts.Monitor.HasValue || displayOpts.Maximized || displayOpts.Fullscreen)
                     {
                         // Apply display options (monitor, maximized, fullscreen)
-                        displayOpts.ApplyToWindow(hWnd, WindowManager.FullscreenMethod.F11);
+                        displayOpts.ApplyToWindow(hWnd, WindowManager.FullscreenMethod.AltEnter);
                         Console.WriteLine($"Applied display options: {displayOpts}");
                     }
                     else if (savedPosition != null)

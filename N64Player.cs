@@ -7,7 +7,7 @@ namespace RetroAuto
     /// </summary>
     public class N64Player : BaseInteractivePlayer
     {
-        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Ares\ares-v146\ares.exe";
+        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Apps\Ares\ares.exe";
         private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\N64";
         private const string GAMES_LIST_FILE = "n64_games.txt";
 

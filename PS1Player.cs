@@ -7,7 +7,7 @@ namespace RetroAuto
     /// </summary>
     public class PS1Player : BaseInteractivePlayer
     {
-        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Duckstation\duckstation-qt-x64-ReleaseLTCG.exe";
+        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Apps\Duckstation\duckstation-qt-x64-ReleaseLTCG.exe";
         private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\PS1";
         private static readonly string[] ROM_EXTENSIONS = { "*.bin", "*.cue", "*.iso", "*.chd", "*.img", "*.pbp" };
 

@@ -7,7 +7,7 @@ namespace RetroAuto
     /// </summary>
     public class Xbox360Player : BaseInteractivePlayer
     {
-        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Xenia\xenia.exe";
+        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Apps\Xenia\xenia.exe";
         private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\Xbox360";
         private static readonly string[] ROM_EXTENSIONS = { "*.iso", "*.xex", "*.xcp", "*.zar" };
 

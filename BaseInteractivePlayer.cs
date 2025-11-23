@@ -28,13 +28,20 @@ namespace RetroAuto
         protected bool isDisposed;
         protected readonly object lockObject = new object();
 
+        // Playlist state for progress persistence
+        protected PlaylistState? playlistState;
+        protected bool forceReset;
+        protected bool resetProgressOnly;
+
         protected BaseInteractivePlayer(
             string emulatorPath,
             string romDirectory,
             string gamesListFile,
             string systemName,
             string[] romExtensions,
-            ConsoleColor themeColor = ConsoleColor.Cyan)
+            ConsoleColor themeColor = ConsoleColor.Cyan,
+            bool forceReset = false,
+            bool resetProgressOnly = false)
         {
             this.emulatorPath = emulatorPath ?? throw new ArgumentNullException(nameof(emulatorPath));
             this.romDirectory = romDirectory ?? throw new ArgumentNullException(nameof(romDirectory));
@@ -42,6 +49,8 @@ namespace RetroAuto
             this.systemName = systemName;
             this.romExtensions = romExtensions;
             this.themeColor = themeColor;
+            this.forceReset = forceReset;
+            this.resetProgressOnly = resetProgressOnly;
 
             this.allGames = new List<string>();
             this.remainingGames = new List<string>();
@@ -94,7 +103,28 @@ namespace RetroAuto
                 if (allGames.Count > 0)
                 {
                     SafeWriteGamesList();
-                    remainingGames = allGames.OrderBy(x => random.Next()).ToList();
+
+                    // Initialize playlist state for persistence
+                    playlistState = new PlaylistState(romDirectory, $"{systemName.ToLower().Replace(" ", "_")}_progress.json");
+
+                    bool hadSavedState = playlistState.HasSavedState;
+                    playlistState.Initialize(allGames, forceReset, resetProgressOnly);
+
+                    if (forceReset)
+                    {
+                        Console.WriteLine("Playlist reset with new random order");
+                    }
+                    else if (resetProgressOnly)
+                    {
+                        Console.WriteLine("Progress reset - starting from beginning (same order)");
+                    }
+                    else if (hadSavedState && playlistState.GamesPlayed > 0)
+                    {
+                        Console.WriteLine($"Resuming: {playlistState.GamesPlayed}/{playlistState.TotalGames} games played");
+                    }
+
+                    // remainingGames is kept for compatibility with derived classes
+                    remainingGames = playlistState.GetRemainingGames();
                 }
             }
             catch (Exception ex)
@@ -194,7 +224,10 @@ namespace RetroAuto
 
             string? currentGame = GetRandomGame();
             string? nextGame = PeekNextGame();
-            int gamesPlayed = 0;
+            // gamesPlayed represents position in playlist (1-indexed for display)
+            // After GetRandomGame(), CurrentIndex is already advanced, so subtract 1
+            int gamesPlayed = playlistState != null ? playlistState.GamesPlayed - 1 : 0;
+            if (gamesPlayed < 0) gamesPlayed = 0;
 
             try
             {
@@ -321,6 +354,12 @@ namespace RetroAuto
         {
             lock (lockObject)
             {
+                if (playlistState != null)
+                {
+                    return playlistState.PeekNext();
+                }
+
+                // Fallback for compatibility
                 if (remainingGames.Count == 0 && allGames.Count > 0)
                 {
                     remainingGames = allGames.OrderBy(x => random.Next()).ToList();
@@ -339,6 +378,12 @@ namespace RetroAuto
         {
             lock (lockObject)
             {
+                if (playlistState != null)
+                {
+                    return playlistState.GetNext();
+                }
+
+                // Fallback for compatibility
                 if (remainingGames.Count == 0 && allGames.Count > 0)
                 {
                     remainingGames = allGames.OrderBy(x => random.Next()).ToList();

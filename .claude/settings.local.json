@@ -17,7 +17,8 @@
       "WebFetch(domain:romspure.cc)",
       "WebFetch(domain:romsfun.com)",
       "WebSearch",
-      "WebFetch(domain:archive.org)"
+      "WebFetch(domain:archive.org)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

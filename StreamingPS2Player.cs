@@ -28,6 +28,7 @@ namespace RetroAuto
         private readonly string gamesDirectory;
         private readonly string tempDirectory;
         private readonly string windowConfigPath;
+        private readonly string? localeFilter;
 
         private readonly HttpClient httpClient;
         private readonly System.Net.CookieContainer cookieContainer;
@@ -44,13 +45,21 @@ namespace RetroAuto
         private bool isDisposed;
         private bool sessionInitialized = false;
 
-        public StreamingPS2Player(string? archiveUrl = null, string? emulatorPath = null, string? gamesDirectory = null)
+        // Playlist state for persistence
+        private PlaylistState? playlistState;
+        private readonly bool forceReset;
+        private readonly bool resetProgressOnly;
+
+        public StreamingPS2Player(string? archiveUrl = null, string? emulatorPath = null, string? gamesDirectory = null, string? locale = null, bool forceReset = false, bool resetProgressOnly = false)
         {
             this.archiveUrl = archiveUrl ?? DEFAULT_ARCHIVE_URL;
             this.emulatorPath = emulatorPath ?? DEFAULT_EMULATOR_PATH;
             this.gamesDirectory = gamesDirectory ?? DEFAULT_GAMES_DIR;
             this.tempDirectory = Path.Combine(this.gamesDirectory, ".streaming_temp");
             this.windowConfigPath = Path.Combine(this.gamesDirectory, "pcsx2_window.json");
+            this.localeFilter = locale;
+            this.forceReset = forceReset;
+            this.resetProgressOnly = resetProgressOnly;
 
             Directory.CreateDirectory(this.gamesDirectory);
             Directory.CreateDirectory(this.tempDirectory);
@@ -81,6 +90,10 @@ namespace RetroAuto
             Console.ResetColor();
             Console.WriteLine();
             Console.WriteLine($"Archive: {archiveUrl}");
+            if (!string.IsNullOrEmpty(localeFilter) && localeFilter != GameLocale.All)
+            {
+                Console.WriteLine($"Locale Filter: {GameLocale.GetLocaleName(localeFilter)}");
+            }
             Console.WriteLine();
 
             if (!File.Exists(emulatorPath))
@@ -100,6 +113,25 @@ namespace RetroAuto
 
             Console.WriteLine($"Found {availableGames.Count} PS2 games available for streaming\n");
 
+            // Initialize playlist state for persistence
+            playlistState = new PlaylistState(gamesDirectory, "stream_ps2_progress.json");
+            var gameFileNames = availableGames.Select(g => g.FileName).ToList();
+            bool hadSavedState = playlistState.HasSavedState;
+            playlistState.Initialize(gameFileNames, forceReset, resetProgressOnly);
+
+            if (forceReset)
+            {
+                Console.WriteLine("Playlist reset with new random order");
+            }
+            else if (resetProgressOnly)
+            {
+                Console.WriteLine("Progress reset - starting from beginning (same order)");
+            }
+            else if (hadSavedState && playlistState.GamesPlayed > 0)
+            {
+                Console.WriteLine($"Resuming: {playlistState.GamesPlayed}/{playlistState.TotalGames} games played");
+            }
+
             cts = new CancellationTokenSource();
             Console.CancelKeyPress += (s, e) =>
             {
@@ -108,10 +140,16 @@ namespace RetroAuto
                 cts.Cancel();
             };
 
-            remainingGames = availableGames.OrderBy(x => random.Next()).ToList();
+            // Build remaining games list from playlist state order
+            var gamesByFileName = availableGames.ToDictionary(g => g.FileName, StringComparer.OrdinalIgnoreCase);
+            remainingGames = playlistState.GetRemainingGames()
+                .Where(fn => gamesByFileName.ContainsKey(fn))
+                .Select(fn => gamesByFileName[fn])
+                .ToList();
+
             preparationTask = PrepareGamesInBackground(cts.Token);
 
-            int gamesPlayed = 0;
+            int gamesPlayed = playlistState.GamesPlayed;
 
             try
             {
@@ -272,6 +310,8 @@ namespace RetroAuto
                     return;
                 }
 
+                var allGames = new List<RemotePS2Game>();
+
                 foreach (var file in filesArray.EnumerateArray())
                 {
                     if (!file.TryGetProperty("name", out var nameProp))
@@ -303,7 +343,7 @@ namespace RetroAuto
 
                     string fullUrl = $"{archiveUrl}/{fileName.Replace(" ", "%20")}";
 
-                    availableGames.Add(new RemotePS2Game
+                    allGames.Add(new RemotePS2Game
                     {
                         FileName = fileName,
                         Url = fullUrl,
@@ -315,7 +355,11 @@ namespace RetroAuto
                     });
                 }
 
-                Console.WriteLine($"Loaded {availableGames.Count} games from archive.org");
+                // Apply locale filter
+                availableGames = GameLocale.FilterByLocale(allGames, localeFilter, g => g.FileName).ToList();
+
+                Console.WriteLine($"Loaded {availableGames.Count} games from archive.org" +
+                    (allGames.Count != availableGames.Count ? $" (filtered from {allGames.Count} total)" : ""));
             }
             catch (Exception ex)
             {
@@ -394,6 +438,33 @@ namespace RetroAuto
         {
             lock (prepareLock)
             {
+                if (playlistState != null)
+                {
+                    // Loop to skip over games that aren't in available list (may have been removed)
+                    while (true)
+                    {
+                        var nextFileName = playlistState.GetNext();
+                        if (nextFileName == null)
+                        {
+                            // Playlist exhausted - reshuffle and continue
+                            Console.WriteLine("\n[INFO] Playlist complete, reshuffling...");
+                            playlistState.FullReset(availableGames.Select(g => g.FileName));
+                            nextFileName = playlistState.GetNext();
+                            if (nextFileName == null) return null;
+                        }
+
+                        var game = availableGames.FirstOrDefault(g =>
+                            g.FileName.Equals(nextFileName, StringComparison.OrdinalIgnoreCase));
+
+                        if (game != null)
+                            return game;
+
+                        // Game not found in available list, skip to next
+                        Console.WriteLine($"[WARN] Game not in current list, skipping: {nextFileName}");
+                    }
+                }
+
+                // Fallback for compatibility
                 if (remainingGames.Count == 0)
                 {
                     remainingGames = availableGames.OrderBy(x => random.Next()).ToList();
@@ -401,9 +472,9 @@ namespace RetroAuto
 
                 if (remainingGames.Count == 0) return null;
 
-                var game = remainingGames[0];
+                var fallbackGame = remainingGames[0];
                 remainingGames.RemoveAt(0);
-                return game;
+                return fallbackGame;
             }
         }
 

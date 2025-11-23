@@ -53,7 +53,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "Game Boy",
-                EmulatorPath = @"C:\Users\rob\Games\Mesen\Mesen.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Mesen\Mesen.exe",
                 RomDirectory = @"C:\Users\rob\Games\GameBoy",
                 Extensions = new[] { "*.gb", "*.gbc", "*.gba" },
                 Color = ConsoleColor.Cyan
@@ -61,7 +61,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "NES",
-                EmulatorPath = @"C:\Users\rob\Games\ares\ares-v146\ares.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Ares\ares.exe",
                 RomDirectory = @"C:\Users\rob\Games\NES",
                 Extensions = new[] { "*.nes", "*.zip" },
                 Color = ConsoleColor.DarkYellow,
@@ -79,7 +79,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "N64",
-                EmulatorPath = @"C:\Users\rob\Games\Ares\ares-v146\ares.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Ares\ares.exe",
                 RomDirectory = @"C:\Users\rob\Games\N64",
                 Extensions = new[] { "*.n64", "*.z64", "*.v64" },
                 Color = ConsoleColor.Red
@@ -87,7 +87,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "SNES",
-                EmulatorPath = @"C:\Users\rob\Games\ares\ares-v146\ares.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Ares\ares.exe",
                 RomDirectory = @"C:\Users\rob\Games\SNES",
                 Extensions = new[] { "*.sfc", "*.smc", "*.zip" },
                 Color = ConsoleColor.Magenta
@@ -95,7 +95,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "Sega Genesis",
-                EmulatorPath = @"C:\Users\rob\Games\ares\ares-v146\ares.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Ares\ares.exe",
                 RomDirectory = @"C:\Users\rob\Games\Genesis",
                 Extensions = new[] { "*.zip", "*.bin", "*.md", "*.gen", "*.smd" },
                 Color = ConsoleColor.DarkRed
@@ -103,7 +103,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "PlayStation 1",
-                EmulatorPath = @"C:\Users\rob\Games\Duckstation\duckstation-qt-x64-ReleaseLTCG.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Duckstation\duckstation-qt-x64-ReleaseLTCG.exe",
                 RomDirectory = @"C:\Users\rob\Games\PS1",
                 Extensions = new[] { "*.bin", "*.cue", "*.iso", "*.chd" },
                 Color = ConsoleColor.Blue
@@ -119,7 +119,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "PlayStation 3",
-                EmulatorPath = @"C:\Users\rob\Games\RCPS3\rpcs3.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\RPCS3\rpcs3.exe",
                 RomDirectory = @"C:\Users\rob\Games\PS3",
                 Extensions = new[] { "*.iso" },
                 Color = ConsoleColor.DarkMagenta
@@ -127,7 +127,7 @@ namespace RetroAuto
             new SystemConfig
             {
                 Name = "Xbox 360",
-                EmulatorPath = @"C:\Users\rob\Games\Xenia\xenia.exe",
+                EmulatorPath = @"C:\Users\rob\Games\Apps\Xenia\xenia.exe",
                 RomDirectory = @"C:\Users\rob\Games\Xbox360",
                 Extensions = new[] { "*.iso", "*.xex" },
                 Color = ConsoleColor.Green

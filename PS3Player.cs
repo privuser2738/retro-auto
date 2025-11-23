@@ -10,7 +10,7 @@ namespace RetroAuto
     /// </summary>
     public class PS3Player : BaseInteractivePlayer
     {
-        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\RCPS3\rpcs3.exe";
+        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Apps\RPCS3\rpcs3.exe";
         private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\PS3";
         private static readonly string[] ROM_EXTENSIONS = { "*.iso", "*.bin" };
 

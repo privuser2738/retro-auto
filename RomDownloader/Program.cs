@@ -18,7 +18,7 @@ namespace RomDownloader
             {
                 Name = "Sega Saturn",
                 Url = "https://myrient.erista.me/files/Redump/Sega%20-%20Saturn/",
-                OutputDir = @"C:\Users\rob\Games\Sega_Saturn",
+                OutputDir = @"C:\Users\rob\Games\Saturn",
                 Extensions = new[] { ".chd", ".zip", ".7z" }
             },
             ["ps1"] = new SourceConfig

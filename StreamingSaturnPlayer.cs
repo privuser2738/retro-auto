@@ -14,14 +14,13 @@ using System.Threading.Tasks;
 namespace RetroAuto
 {
     /// <summary>
-    /// Streams original Xbox games from archive.org - downloads and plays on demand using Xemu
+    /// Streams Sega Saturn games from archive.org - downloads and plays on demand using YabaSanshiro
     /// </summary>
-    public class StreamingXboxPlayer : IDisposable
+    public class StreamingSaturnPlayer : IDisposable
     {
-        // Large Xbox collection with XISO format games ready for Xemu
-        private const string DEFAULT_ARCHIVE_URL = "https://archive.org/download/microsoft-xbox-xemu.xisoready-software-collection-part-2";
-        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Apps\Xemu\xemu.exe";
-        private const string DEFAULT_GAMES_DIR = @"C:\Users\rob\Games\Xbox";
+        private const string DEFAULT_ARCHIVE_URL = "https://archive.org/download/sega_saturn";
+        private const string DEFAULT_EMULATOR_PATH = @"C:\Users\rob\Games\Apps\YabaSanshiro\yabasanshiro.exe";
+        private const string DEFAULT_GAMES_DIR = @"C:\Users\rob\Games\Saturn";
         private const int MAX_PREPARED_GAMES = 2;
 
         private readonly string archiveUrl;
@@ -33,12 +32,12 @@ namespace RetroAuto
 
         private readonly HttpClient httpClient;
         private readonly System.Net.CookieContainer cookieContainer;
-        private readonly ConcurrentQueue<PreparedXboxGame> preparedGames = new();
+        private readonly ConcurrentQueue<PreparedSaturnGame> preparedGames = new();
         private readonly HashSet<string> preparingGames = new();
         private readonly object prepareLock = new();
 
-        private List<RemoteXboxGame> availableGames = new();
-        private List<RemoteXboxGame> remainingGames = new();
+        private List<RemoteSaturnGame> availableGames = new();
+        private List<RemoteSaturnGame> remainingGames = new();
         private Random random = new();
         private CancellationTokenSource? cts;
         private Task? preparationTask;
@@ -51,14 +50,14 @@ namespace RetroAuto
         private readonly bool forceReset;
         private readonly bool resetProgressOnly;
 
-        public StreamingXboxPlayer(string? archiveUrl = null, string? emulatorPath = null, string? gamesDirectory = null, string? locale = null, bool forceReset = false, bool resetProgressOnly = false)
+        public StreamingSaturnPlayer(string? archiveUrl = null, string? emulatorPath = null, string? gamesDirectory = null, string? locale = null, bool forceReset = false, bool resetProgressOnly = false)
         {
             this.archiveUrl = archiveUrl ?? DEFAULT_ARCHIVE_URL;
             this.emulatorPath = emulatorPath ?? DEFAULT_EMULATOR_PATH;
             this.gamesDirectory = gamesDirectory ?? DEFAULT_GAMES_DIR;
             this.tempDirectory = Path.Combine(this.gamesDirectory, ".streaming_temp");
+            this.windowConfigPath = Path.Combine(this.gamesDirectory, "retroarch_saturn_window.json");
             this.localeFilter = locale;
-            this.windowConfigPath = Path.Combine(this.gamesDirectory, "xemu_window.json");
             this.forceReset = forceReset;
             this.resetProgressOnly = resetProgressOnly;
 
@@ -84,19 +83,22 @@ namespace RetroAuto
         public async Task RunAsync()
         {
             try { Console.Clear(); } catch { }
-            Console.ForegroundColor = ConsoleColor.Green;
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║          Xbox Streaming Player - Archive.org Edition           ║");
+            Console.WriteLine("║        Sega Saturn Streaming Player - Archive.org Edition      ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
             Console.ResetColor();
             Console.WriteLine();
             Console.WriteLine($"Archive: {archiveUrl}");
+            if (!string.IsNullOrEmpty(localeFilter) && localeFilter != GameLocale.All)
+            {
+                Console.WriteLine($"Locale Filter: {GameLocale.GetLocaleName(localeFilter)}");
+            }
             Console.WriteLine();
 
             if (!File.Exists(emulatorPath))
             {
-                Console.WriteLine($"ERROR: Xemu not found at: {emulatorPath}");
-                Console.WriteLine("Please install Xemu from https://xemu.app/");
+                Console.WriteLine($"ERROR: YabaSanshiro not found at: {emulatorPath}");
                 return;
             }
 
@@ -109,10 +111,10 @@ namespace RetroAuto
                 return;
             }
 
-            Console.WriteLine($"Found {availableGames.Count} Xbox games available for streaming\n");
+            Console.WriteLine($"Found {availableGames.Count} Saturn games available for streaming\n");
 
             // Initialize playlist state for persistence
-            playlistState = new PlaylistState(gamesDirectory, "stream_xbox_progress.json");
+            playlistState = new PlaylistState(gamesDirectory, "stream_saturn_progress.json");
             var gameFileNames = availableGames.Select(g => g.FileName).ToList();
             bool hadSavedState = playlistState.HasSavedState;
             playlistState.Initialize(gameFileNames, forceReset, resetProgressOnly);
@@ -155,7 +157,7 @@ namespace RetroAuto
                 {
                     Console.WriteLine("\nWaiting for next game to be ready...");
 
-                    PreparedXboxGame? game = null;
+                    PreparedSaturnGame? game = null;
                     while (game == null && !cts.Token.IsCancellationRequested)
                     {
                         if (preparedGames.TryDequeue(out game))
@@ -205,11 +207,8 @@ namespace RetroAuto
         }
 
         private async Task<HttpResponseMessage?> SendRequestWithRedirects(
-            string url,
-            bool isDownload,
-            long rangeStart = 0,
-            CancellationToken ct = default,
-            int maxRedirects = 10)
+            string url, bool isDownload, long rangeStart = 0,
+            CancellationToken ct = default, int maxRedirects = 10)
         {
             string currentUrl = url;
             string? previousHost = null;
@@ -280,7 +279,6 @@ namespace RetroAuto
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
-
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
 
@@ -290,6 +288,8 @@ namespace RetroAuto
                     return;
                 }
 
+                var allGames = new List<RemoteSaturnGame>();
+
                 foreach (var file in filesArray.EnumerateArray())
                 {
                     if (!file.TryGetProperty("name", out var nameProp))
@@ -297,16 +297,15 @@ namespace RetroAuto
 
                     string fileName = nameProp.GetString() ?? "";
 
-                    // Xbox games are .iso or .xiso.iso format
-                    bool isGameFile = fileName.EndsWith(".iso", StringComparison.OrdinalIgnoreCase) ||
-                                     fileName.EndsWith(".7z", StringComparison.OrdinalIgnoreCase) ||
-                                     fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+                    // Saturn games: .chd, .cue, .iso, .bin, or compressed
+                    bool isGameFile = fileName.EndsWith(".chd", StringComparison.OrdinalIgnoreCase) ||
+                                     fileName.EndsWith(".cue", StringComparison.OrdinalIgnoreCase) ||
+                                     fileName.EndsWith(".iso", StringComparison.OrdinalIgnoreCase) ||
+                                     fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
+                                     fileName.EndsWith(".7z", StringComparison.OrdinalIgnoreCase);
 
                     if (!isGameFile) continue;
-
-                    // Skip metadata files
-                    if (fileName.Contains("torrent", StringComparison.OrdinalIgnoreCase))
-                        continue;
+                    if (fileName.Contains("torrent", StringComparison.OrdinalIgnoreCase)) continue;
 
                     long size = 0;
                     if (file.TryGetProperty("size", out var sizeProp))
@@ -318,19 +317,25 @@ namespace RetroAuto
                     }
 
                     string fullUrl = $"{archiveUrl}/{fileName.Replace(" ", "%20")}";
+                    string title = CleanGameTitle(fileName);
 
-                    availableGames.Add(new RemoteXboxGame
+                    allGames.Add(new RemoteSaturnGame
                     {
                         FileName = fileName,
                         Url = fullUrl,
                         Size = size,
-                        Title = CleanGameTitle(fileName),
-                        IsCompressed = fileName.EndsWith(".7z", StringComparison.OrdinalIgnoreCase) ||
-                                      fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
+                        Title = title,
+                        Locale = GameLocale.DetectLocale(fileName),
+                        IsCompressed = fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
+                                      fileName.EndsWith(".7z", StringComparison.OrdinalIgnoreCase)
                     });
                 }
 
-                Console.WriteLine($"Loaded {availableGames.Count} games from archive.org");
+                // Apply locale filter
+                availableGames = GameLocale.FilterByLocale(allGames, localeFilter, g => g.FileName).ToList();
+
+                Console.WriteLine($"Loaded {availableGames.Count} games from archive.org" +
+                    (allGames.Count != availableGames.Count ? $" (filtered from {allGames.Count} total)" : ""));
             }
             catch (Exception ex)
             {
@@ -341,9 +346,6 @@ namespace RetroAuto
         private string CleanGameTitle(string fileName)
         {
             string name = Path.GetFileNameWithoutExtension(fileName);
-            // Remove .xiso if present
-            if (name.EndsWith(".xiso", StringComparison.OrdinalIgnoreCase))
-                name = name.Substring(0, name.Length - 5);
             name = Regex.Replace(name, @"\s*[\(\[].*?[\)\]]", "");
             name = name.Replace("_", " ");
             name = Regex.Replace(name, @"\s+", " ");
@@ -370,13 +372,12 @@ namespace RetroAuto
 
                     if (queueCount + preparingCount < MAX_PREPARED_GAMES)
                     {
-                        RemoteXboxGame? nextGame = GetNextRandomGame();
+                        RemoteSaturnGame? nextGame = GetNextRandomGame();
                         if (nextGame != null)
                         {
                             lock (prepareLock)
                             {
-                                if (preparingGames.Contains(nextGame.FileName))
-                                    continue;
+                                if (preparingGames.Contains(nextGame.FileName)) continue;
                                 preparingGames.Add(nextGame.FileName);
                             }
 
@@ -387,10 +388,7 @@ namespace RetroAuto
                                 Console.WriteLine($"\n[READY] {prepared.Title} is ready to play!");
                             }
 
-                            lock (prepareLock)
-                            {
-                                preparingGames.Remove(nextGame.FileName);
-                            }
+                            lock (prepareLock) { preparingGames.Remove(nextGame.FileName); }
                         }
                     }
 
@@ -405,7 +403,7 @@ namespace RetroAuto
             }
         }
 
-        private RemoteXboxGame? GetNextRandomGame()
+        private RemoteSaturnGame? GetNextRandomGame()
         {
             lock (prepareLock)
             {
@@ -447,7 +445,7 @@ namespace RetroAuto
             }
         }
 
-        private async Task<PreparedXboxGame?> PrepareGame(RemoteXboxGame game, CancellationToken ct)
+        private async Task<PreparedSaturnGame?> PrepareGame(RemoteSaturnGame game, CancellationToken ct)
         {
             string folderName = CreateSafeFolderName(game.Title);
             string extractPath = Path.Combine(gamesDirectory, folderName);
@@ -457,7 +455,6 @@ namespace RetroAuto
 
             try
             {
-                // Check if game folder already exists
                 if (Directory.Exists(extractPath))
                 {
                     Console.WriteLine($"[PREP] Found existing game folder, using cached version");
@@ -466,11 +463,12 @@ namespace RetroAuto
                     if (existingGameFile != null)
                     {
                         Console.WriteLine($"[PREP] Using: {Path.GetFileName(existingGameFile)}");
-                        return new PreparedXboxGame
+                        return new PreparedSaturnGame
                         {
                             Title = game.Title,
                             GameFilePath = existingGameFile,
-                            ExtractedPath = extractPath
+                            ExtractedPath = extractPath,
+                            Locale = game.Locale
                         };
                     }
                     else
@@ -512,11 +510,12 @@ namespace RetroAuto
                     return null;
                 }
 
-                return new PreparedXboxGame
+                return new PreparedSaturnGame
                 {
                     Title = game.Title,
                     GameFilePath = gameFile,
-                    ExtractedPath = extractPath
+                    ExtractedPath = extractPath,
+                    Locale = game.Locale
                 };
             }
             catch (Exception ex)
@@ -528,23 +527,20 @@ namespace RetroAuto
 
         private string? FindGameFile(string folderPath)
         {
-            if (!Directory.Exists(folderPath))
-                return null;
+            if (!Directory.Exists(folderPath)) return null;
 
             var files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
 
-            // Priority: .iso files for Xbox
-            return files.FirstOrDefault(f => f.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
-                ?? files.FirstOrDefault(f => f.EndsWith(".xiso", StringComparison.OrdinalIgnoreCase));
+            return files.FirstOrDefault(f => f.EndsWith(".chd", StringComparison.OrdinalIgnoreCase))
+                ?? files.FirstOrDefault(f => f.EndsWith(".cue", StringComparison.OrdinalIgnoreCase))
+                ?? files.FirstOrDefault(f => f.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
+                ?? files.FirstOrDefault(f => f.EndsWith(".bin", StringComparison.OrdinalIgnoreCase) && new FileInfo(f).Length > 1024 * 1024);
         }
 
         private async Task DownloadFile(string url, string outputPath, long expectedSize, CancellationToken ct)
         {
             string tempPath = outputPath + ".downloading";
-            long existingSize = 0;
-
-            if (File.Exists(tempPath))
-                existingSize = new FileInfo(tempPath).Length;
+            long existingSize = File.Exists(tempPath) ? new FileInfo(tempPath).Length : 0;
 
             await InitializeSession();
 
@@ -555,8 +551,7 @@ namespace RetroAuto
                 {
                     using var response = await SendRequestWithRedirects(url, isDownload: true, rangeStart: existingSize, ct: ct);
 
-                    if (response == null)
-                        throw new Exception("No response received");
+                    if (response == null) throw new Exception("No response received");
 
                     bool isPartial = response.StatusCode == System.Net.HttpStatusCode.PartialContent;
 
@@ -580,8 +575,7 @@ namespace RetroAuto
                         throw new Exception($"Download failed: {statusInfo}");
                     }
 
-                    if (!isPartial && existingSize > 0)
-                        existingSize = 0;
+                    if (!isPartial && existingSize > 0) existingSize = 0;
 
                     long totalSize = (response.Content.Headers.ContentLength ?? 0) + existingSize;
                     if (expectedSize == 0) expectedSize = totalSize;
@@ -598,8 +592,7 @@ namespace RetroAuto
 
                     try
                     {
-                        using var fileStream = new FileStream(tempPath, mode, FileAccess.Write, FileShare.None,
-                            bufferSize, FileOptions.Asynchronous);
+                        using var fileStream = new FileStream(tempPath, mode, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous);
 
                         while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0)
                         {
@@ -619,10 +612,7 @@ namespace RetroAuto
 
                         await fileStream.FlushAsync(ct);
                     }
-                    finally
-                    {
-                        stream.Dispose();
-                    }
+                    finally { stream.Dispose(); }
 
                     Console.WriteLine();
                     await Task.Delay(100, ct);
@@ -644,17 +634,11 @@ namespace RetroAuto
             try
             {
                 if (ext == ".zip")
-                {
                     ZipFile.ExtractToDirectory(archivePath, extractPath, overwriteFiles: true);
-                }
                 else if (ext == ".7z" || ext == ".rar")
-                {
                     await Extract7z(archivePath, extractPath, ct);
-                }
                 else
-                {
                     throw new Exception($"Unsupported archive format: {ext}");
-                }
 
                 return FindGameFile(extractPath);
             }
@@ -667,12 +651,7 @@ namespace RetroAuto
 
         private async Task Extract7z(string archivePath, string extractPath, CancellationToken ct)
         {
-            string[] sevenZipPaths = {
-                @"C:\Program Files\7-Zip\7z.exe",
-                @"C:\Program Files (x86)\7-Zip\7z.exe",
-                "7z.exe"
-            };
-
+            string[] sevenZipPaths = { @"C:\Program Files\7-Zip\7z.exe", @"C:\Program Files (x86)\7-Zip\7z.exe", "7z.exe" };
             string? sevenZip = sevenZipPaths.FirstOrDefault(File.Exists) ?? "7z.exe";
 
             var psi = new ProcessStartInfo
@@ -685,10 +664,7 @@ namespace RetroAuto
                 CreateNoWindow = true
             };
 
-            using var process = Process.Start(psi);
-            if (process == null)
-                throw new Exception("Failed to start 7z process");
-
+            using var process = Process.Start(psi) ?? throw new Exception("Failed to start 7z process");
             await process.WaitForExitAsync(ct);
 
             if (process.ExitCode != 0)
@@ -698,12 +674,12 @@ namespace RetroAuto
             }
         }
 
-        private void ShowGameTitle(PreparedXboxGame game, int gameNumber)
+        private void ShowGameTitle(PreparedSaturnGame game, int gameNumber)
         {
             try { Console.Clear(); } catch { }
-            Console.ForegroundColor = ConsoleColor.Green;
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine($"║{CenterText("Xbox Streaming - NOW PLAYING", 64)}║");
+            Console.WriteLine($"║{CenterText("Sega Saturn Streaming - NOW PLAYING", 64)}║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
             Console.ResetColor();
             Console.WriteLine();
@@ -717,7 +693,7 @@ namespace RetroAuto
             Console.WriteLine($"  {game.Title}");
             Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine($"  {Path.GetFileName(game.GameFilePath)}");
+            Console.WriteLine($"  {Path.GetFileName(game.GameFilePath)} [{GameLocale.GetLocaleName(game.Locale)}]");
             Console.ResetColor();
             Console.WriteLine();
 
@@ -727,7 +703,7 @@ namespace RetroAuto
             Console.WriteLine();
         }
 
-        private async Task PlayGame(PreparedXboxGame game, CancellationToken ct)
+        private async Task PlayGame(PreparedSaturnGame game, CancellationToken ct)
         {
             try
             {
@@ -736,11 +712,11 @@ namespace RetroAuto
                 try { savedPosition = WindowManager.LoadWindowPosition(windowConfigPath); } catch { }
 #endif
 
-                // Xemu requires -dvd_path argument for ISO files
+                // YabaSanshiro uses -i for input file
                 var psi = new ProcessStartInfo
                 {
                     FileName = emulatorPath,
-                    Arguments = $"-dvd_path \"{game.GameFilePath}\"",
+                    Arguments = $"-i \"{game.GameFilePath}\"",
                     UseShellExecute = false
                 };
 
@@ -762,18 +738,15 @@ namespace RetroAuto
                     if (savedPosition != null)
                         WindowManager.SetWindowPosition(hWnd, savedPosition);
 
-                    // Xemu uses F11 for fullscreen
+                    // RetroArch uses F for fullscreen
                     DisplayOptions.Current?.ApplyToWindow(hWnd, WindowManager.FullscreenMethod.F11);
                 }
 #endif
 
                 while (!Console.KeyAvailable && !currentProcess.HasExited && !ct.IsCancellationRequested)
-                {
                     await Task.Delay(100);
-                }
 
-                if (Console.KeyAvailable)
-                    Console.ReadKey(true);
+                if (Console.KeyAvailable) Console.ReadKey(true);
 
 #if !CROSS_PLATFORM
                 if (!currentProcess.HasExited)
@@ -784,8 +757,7 @@ namespace RetroAuto
                         if (currentProcess.MainWindowHandle != IntPtr.Zero)
                         {
                             var pos = WindowManager.GetWindowPosition(currentProcess.MainWindowHandle);
-                            if (pos != null)
-                                WindowManager.SaveWindowPosition(pos, windowConfigPath);
+                            if (pos != null) WindowManager.SaveWindowPosition(pos, windowConfigPath);
                         }
                     }
                     catch { }
@@ -796,12 +768,8 @@ namespace RetroAuto
                 {
                     currentProcess.CloseMainWindow();
                     await WindowManager.AutoConfirmDialogsAsync(currentProcess, maxWaitMs: 3000);
-
-                    if (!currentProcess.HasExited)
-                    {
-                        if (!currentProcess.WaitForExit(1000))
-                            currentProcess.Kill();
-                    }
+                    if (!currentProcess.HasExited && !currentProcess.WaitForExit(1000))
+                        currentProcess.Kill();
                 }
             }
             finally
@@ -816,12 +784,8 @@ namespace RetroAuto
             try
             {
                 if (Directory.Exists(tempDirectory))
-                {
                     foreach (var file in Directory.GetFiles(tempDirectory))
-                    {
                         try { File.Delete(file); } catch { }
-                    }
-                }
             }
             catch { }
         }
@@ -846,29 +810,29 @@ namespace RetroAuto
         {
             if (isDisposed) return;
             isDisposed = true;
-
             cts?.Cancel();
             currentProcess?.Kill();
             currentProcess?.Dispose();
             httpClient.Dispose();
-
             GC.SuppressFinalize(this);
         }
     }
 
-    class RemoteXboxGame
+    class RemoteSaturnGame
     {
         public string FileName { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public long Size { get; set; }
+        public string Locale { get; set; } = GameLocale.All;
         public bool IsCompressed { get; set; }
     }
 
-    class PreparedXboxGame
+    class PreparedSaturnGame
     {
         public string Title { get; set; } = string.Empty;
         public string GameFilePath { get; set; } = string.Empty;
         public string ExtractedPath { get; set; } = string.Empty;
+        public string Locale { get; set; } = GameLocale.All;
     }
 }

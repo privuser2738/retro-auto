@@ -17,11 +17,11 @@ namespace RetroAuto
 
         // Game Boy / Mesen settings
         private const string DEFAULT_GAMEBOY_DIR = @"C:\Users\rob\Games\Gameboy";
-        private const string DEFAULT_MESEN = @"C:\Users\rob\Games\Mesen\Mesen.exe";
+        private const string DEFAULT_MESEN = @"C:\Users\rob\Games\Apps\Mesen\Mesen.exe";
 
         // N64 / Ares settings
         private const string DEFAULT_N64_DIR = @"C:\Users\rob\Games\N64";
-        private const string DEFAULT_N64_EMULATOR = @"C:\Users\rob\Games\Ares\ares-v146\ares.exe";
+        private const string DEFAULT_N64_EMULATOR = @"C:\Users\rob\Games\Apps\Ares\ares.exe";
 
         [STAThread]
         static async Task<int> Main(string[] args)
@@ -63,6 +63,8 @@ namespace RetroAuto
                 case "megadrive":
                 case "md":
                     return await RunGenesisMode(args);
+                case "saturn":
+                    return await RunSaturnMode(args);
                 case "ps1":
                 case "psx":
                     return await RunPS1Mode(args);
@@ -86,6 +88,9 @@ namespace RetroAuto
                 case "stream-x360":
                 case "streamxbox360":
                     return await RunStreamingXbox360Mode(args);
+                case "stream-saturn":
+                case "streamsaturn":
+                    return await RunStreamingSaturnMode(args);
             }
 
             // Also check with -- prefix
@@ -348,16 +353,23 @@ Usage: RetroAuto.exe [system/command] [options]
   n64                  Nintendo 64 (Ares)
   snes                 Super Nintendo (BSNES)
   genesis, md          Sega Genesis / Mega Drive (Ares)
+  saturn               Sega Saturn (YabaSanshiro)
   ps1, psx             PlayStation 1 (DuckStation)
   ps2                  PlayStation 2 (PCSX2)
   ps3                  PlayStation 3 (RPCS3)
   xbox360, x360        Xbox 360 (Xenia)
 
 === STREAMING MODES ===
-  stream-psx           Stream PSX games from archive.org (auto-download & play)
-  stream-ps2           Stream PS2 games from archive.org (auto-download & play)
-  stream-xbox          Stream Xbox games from archive.org (Xemu emulator)
-  stream-xbox360       Stream Xbox 360 games from archive.org (Xenia emulator)
+  stream-psx           Stream PSX games from archive.org (DuckStation)
+  stream-ps2           Stream PS2 games from archive.org (PCSX2)
+  stream-xbox          Stream Xbox games from archive.org (Xemu)
+  stream-xbox360       Stream Xbox 360 games from archive.org (Xenia)
+  stream-saturn        Stream Sega Saturn games from archive.org (YabaSanshiro)
+
+  Streaming Options:
+    -l, --locale XX    Filter by locale: en (English/USA), jp (Japanese), eu (European), * (all)
+    --reset            Reset playlist with NEW random order
+    --reset-progress   Restart from beginning (keep same order)
 
 === ATARI 2600 MODE (Auto-play) ===
 Commands:
@@ -385,6 +397,7 @@ Options:
   N64          C:\Users\rob\Games\N64         (Ares)
   SNES         C:\Users\rob\Games\SNES        (BSNES)
   Genesis      C:\Users\rob\Games\Genesis     (Ares)
+  Saturn       C:\Users\rob\Games\Saturn      (YabaSanshiro)
   PS1          C:\Users\rob\Games\PS1         (DuckStation)
   PS2          C:\Users\rob\Games\PS2         (PCSX2)
   PS3          C:\Users\rob\Games\PS3         (RPCS3)
@@ -699,15 +712,39 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
             }
         }
 
+        static async Task<int> RunSaturnMode(string[] args)
+        {
+            Console.WriteLine("=== RetroAuto - Sega Saturn Mode (RetroArch + Beetle Saturn) ===\n");
+
+            try
+            {
+                using var player = new SaturnPlayer();
+                await player.RunInteractive();
+                return 0;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\nSetup Error: {ex.Message}");
+                Console.WriteLine("\nPlease check your paths and try again.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
         static async Task<int> RunStreamingPSXMode(string[] args)
         {
             try
             {
-                // Optional: specify archive URL as argument
-                // e.g. stream-psx https://archive.org/download/some-other-archive
-                string? archiveUrl = args.Length > 1 ? args[1] : null;
+                string? archiveUrl = GetStreamingArchiveUrl(args);
+                string? locale = GameLocale.ParseLocaleFromArgs(args);
+                var (forceReset, resetProgressOnly) = ParseResetFlags(args);
 
-                using var player = new StreamingPSXPlayer(archiveUrl);
+                using var player = new StreamingPSXPlayer(archiveUrl, locale: locale, forceReset: forceReset, resetProgressOnly: resetProgressOnly);
                 await player.RunAsync();
                 return 0;
             }
@@ -723,11 +760,11 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
         {
             try
             {
-                // Optional: specify archive URL as argument
-                // e.g. stream-ps2 https://archive.org/download/some-other-ps2-archive
-                string? archiveUrl = args.Length > 1 ? args[1] : null;
+                string? archiveUrl = GetStreamingArchiveUrl(args);
+                string? locale = GameLocale.ParseLocaleFromArgs(args);
+                var (forceReset, resetProgressOnly) = ParseResetFlags(args);
 
-                using var player = new StreamingPS2Player(archiveUrl);
+                using var player = new StreamingPS2Player(archiveUrl, locale: locale, forceReset: forceReset, resetProgressOnly: resetProgressOnly);
                 await player.RunAsync();
                 return 0;
             }
@@ -743,10 +780,11 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
         {
             try
             {
-                // Optional: specify archive URL as argument
-                string? archiveUrl = args.Length > 1 ? args[1] : null;
+                string? archiveUrl = GetStreamingArchiveUrl(args);
+                string? locale = GameLocale.ParseLocaleFromArgs(args);
+                var (forceReset, resetProgressOnly) = ParseResetFlags(args);
 
-                using var player = new StreamingXboxPlayer(archiveUrl);
+                using var player = new StreamingXboxPlayer(archiveUrl, locale: locale, forceReset: forceReset, resetProgressOnly: resetProgressOnly);
                 await player.RunAsync();
                 return 0;
             }
@@ -762,10 +800,11 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
         {
             try
             {
-                // Optional: specify archive URL as argument
-                string? archiveUrl = args.Length > 1 ? args[1] : null;
+                string? archiveUrl = GetStreamingArchiveUrl(args);
+                string? locale = GameLocale.ParseLocaleFromArgs(args);
+                var (forceReset, resetProgressOnly) = ParseResetFlags(args);
 
-                using var player = new StreamingXbox360Player(archiveUrl);
+                using var player = new StreamingXbox360Player(archiveUrl, locale: locale, forceReset: forceReset, resetProgressOnly: resetProgressOnly);
                 await player.RunAsync();
                 return 0;
             }
@@ -775,6 +814,61 @@ Press Ctrl+C during playback to stop. Use arrow keys for menu navigation.
                 Console.WriteLine(ex.StackTrace);
                 return 1;
             }
+        }
+
+        static async Task<int> RunStreamingSaturnMode(string[] args)
+        {
+            try
+            {
+                string? archiveUrl = GetStreamingArchiveUrl(args);
+                string? locale = GameLocale.ParseLocaleFromArgs(args);
+                var (forceReset, resetProgressOnly) = ParseResetFlags(args);
+
+                using var player = new StreamingSaturnPlayer(archiveUrl, locale: locale, forceReset: forceReset, resetProgressOnly: resetProgressOnly);
+                await player.RunAsync();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return 1;
+            }
+        }
+
+        /// <summary>
+        /// Helper to extract archive URL from streaming command args (skips flags like -l, --locale, --reset)
+        /// </summary>
+        private static string? GetStreamingArchiveUrl(string[] args)
+        {
+            for (int i = 1; i < args.Length; i++)
+            {
+                var arg = args[i];
+                // Skip flag arguments
+                if (arg.StartsWith("-"))
+                {
+                    // Skip the next arg if this is -l or --locale (value follows)
+                    if (arg == "-l" || arg == "--locale")
+                        i++;
+                    continue;
+                }
+                // First non-flag argument is the archive URL
+                if (arg.StartsWith("http"))
+                    return arg;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Parse reset flags from command line args
+        /// --reset: Full reset with new random order
+        /// --reset-progress: Reset progress but keep same order
+        /// </summary>
+        private static (bool forceReset, bool resetProgressOnly) ParseResetFlags(string[] args)
+        {
+            bool forceReset = args.Any(a => a.Equals("--reset", StringComparison.OrdinalIgnoreCase));
+            bool resetProgressOnly = args.Any(a => a.Equals("--reset-progress", StringComparison.OrdinalIgnoreCase));
+            return (forceReset, resetProgressOnly);
         }
     }
 }

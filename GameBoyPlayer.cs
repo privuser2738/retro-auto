@@ -7,7 +7,7 @@ namespace RetroAuto
     /// </summary>
     public class GameBoyPlayer : BaseInteractivePlayer
     {
-        private const string DEFAULT_MESEN_PATH = @"C:\Users\rob\Games\Mesen\Mesen.exe";
+        private const string DEFAULT_MESEN_PATH = @"C:\Users\rob\Games\Apps\Mesen\Mesen.exe";
         private const string DEFAULT_ROM_DIR = @"C:\Users\rob\Games\Gameboy";
         private const string GAMES_LIST_FILE = "gameboy_games.txt";
 

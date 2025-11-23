@@ -678,6 +678,7 @@ namespace RetroAuto
             }
         }
 
+#if !CROSS_PLATFORM
         /// <summary>
         /// Determines the fullscreen toggle method based on emulator
         /// </summary>
@@ -696,6 +697,7 @@ namespace RetroAuto
             // Most emulators (Ares, DuckStation, Mesen, etc.) use F11
             return WindowManager.FullscreenMethod.F11;
         }
+#endif
 
         public void Dispose()
         {

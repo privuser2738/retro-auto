@@ -23,7 +23,8 @@
       "WebFetch(domain:github.com)",
       "Bash(\"C:/Users/rob/Games/Apps/YabaSanshiro/yabasanshiro.exe\" --help)",
       "Bash(\"C:/Users/rob/Games/Apps/YabaSanshiro/yabasanshiro.exe\" -h)",
-      "Bash(\"C:/Users/rob/Games/Apps/YabaSanshiro/yabasanshiro.exe\" -?)"
+      "Bash(\"C:/Users/rob/Games/Apps/YabaSanshiro/yabasanshiro.exe\" -?)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

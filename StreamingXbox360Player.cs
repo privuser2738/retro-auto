@@ -793,7 +793,11 @@ namespace RetroAuto
                 if (!currentProcess.HasExited)
                 {
                     currentProcess.CloseMainWindow();
+#if !CROSS_PLATFORM
                     await WindowManager.AutoConfirmDialogsAsync(currentProcess, maxWaitMs: 3000);
+#else
+                    await Task.Delay(500);
+#endif
 
                     if (!currentProcess.HasExited)
                     {

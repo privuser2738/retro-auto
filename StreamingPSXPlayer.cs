@@ -969,8 +969,12 @@ namespace RetroAuto
                 {
                     currentProcess.CloseMainWindow();
 
+#if !CROSS_PLATFORM
                     // Auto-confirm any "Close game?" or "Save state?" dialogs
                     await WindowManager.AutoConfirmDialogsAsync(currentProcess, maxWaitMs: 3000);
+#else
+                    await Task.Delay(500);
+#endif
 
                     // If still not exited after auto-confirm, force kill
                     if (!currentProcess.HasExited)

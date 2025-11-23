@@ -22,10 +22,12 @@ namespace RetroAuto
         /// </summary>
         public bool Fullscreen { get; set; }
 
+#if !CROSS_PLATFORM
         /// <summary>
         /// Fullscreen method to use (F11, F12, AltEnter)
         /// </summary>
         public WindowManager.FullscreenMethod FullscreenMethod { get; set; } = WindowManager.FullscreenMethod.F11;
+#endif
 
         /// <summary>
         /// Parse display options from command line arguments
@@ -57,6 +59,7 @@ namespace RetroAuto
                 {
                     options.Fullscreen = true;
                 }
+#if !CROSS_PLATFORM
                 // --fullscreen-method=X
                 else if (lower.StartsWith("--fullscreen-method=") || lower.StartsWith("--fs-method="))
                 {
@@ -74,6 +77,7 @@ namespace RetroAuto
                 {
                     WindowManager.PrintMonitors();
                 }
+#endif
             }
 
             return options;
@@ -84,6 +88,7 @@ namespace RetroAuto
         /// </summary>
         public static DisplayOptions Current { get; set; } = new DisplayOptions();
 
+#if !CROSS_PLATFORM
         /// <summary>
         /// Apply display options to a window after it's created
         /// </summary>
@@ -121,13 +126,18 @@ namespace RetroAuto
                 WindowManager.SendFullscreenKey(hWnd, method);
             }
         }
+#endif
 
         public override string ToString()
         {
             var parts = new System.Collections.Generic.List<string>();
             if (Monitor.HasValue) parts.Add($"Monitor={Monitor.Value}");
             if (Maximized) parts.Add("Maximized");
+#if !CROSS_PLATFORM
             if (Fullscreen) parts.Add($"Fullscreen({FullscreenMethod})");
+#else
+            if (Fullscreen) parts.Add("Fullscreen");
+#endif
             return parts.Count > 0 ? string.Join(", ", parts) : "Default";
         }
     }

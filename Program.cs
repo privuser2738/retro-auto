@@ -33,6 +33,7 @@ namespace RetroAuto
                 Console.WriteLine($"Display options: {DisplayOptions.Current}");
             }
 
+#if !CROSS_PLATFORM
             // Check for --monitors flag to list displays
             if (args.Any(a => a.Equals("--monitors", StringComparison.OrdinalIgnoreCase) ||
                              a.Equals("--list-monitors", StringComparison.OrdinalIgnoreCase)))
@@ -40,6 +41,7 @@ namespace RetroAuto
                 WindowManager.PrintMonitors();
                 if (args.Length == 1) return 0;  // Only listing monitors, exit
             }
+#endif
 
             // Check for special modes
             string? mode = args.FirstOrDefault(a => !a.StartsWith("-"))?.ToLower();
